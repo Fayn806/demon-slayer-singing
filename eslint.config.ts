@@ -39,6 +39,7 @@ export default style(
 					type: "natural",
 				},
 			],
+			"unicorn/no-keyword-prefix": "off",
 		},
 		type: "game",
 		typescript: {
