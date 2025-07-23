@@ -54,4 +54,28 @@ export default style(
 			"max-lines-per-function": "off",
 		},
 	},
+	{
+		ignores: [
+			// Markdown files
+			"**/*.md",
+			"docs/**/*.md",
+			"prompts/**/*.md",
+
+			// Yaml files
+			"**/*.yaml",
+			"**/*.yml",
+
+			// Assets
+			"assets/**/*.*",
+			"asset/**/*.*",
+
+			// Build outputs
+			"dist/",
+			"build/",
+			"out/",
+
+			// Node modules
+			"node_modules/",
+		],
+	},
 );
