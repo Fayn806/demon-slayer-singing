@@ -6,6 +6,7 @@
 		"roblox-ts.vscode-roblox-ts",
 		"antfu.file-nesting",
 		"evaera.vscode-rojo",
-		"wayou.vscode-todo-highlight"
+		"wayou.vscode-todo-highlight",
+		"esbenp.prettier-vscode"
 	]
 }

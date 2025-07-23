@@ -1,5 +1,7 @@
 import style from "@isentinel/eslint-config";
 
+import prettier from "eslint-plugin-prettier";
+
 export default style(
 	{
 		perfectionist: {
@@ -13,9 +15,13 @@ export default style(
 				"onTick",
 			],
 		},
+		plugins: {
+			prettier,
+		},
 		pnpm: true,
 		react: true,
 		rules: {
+			"antfu/consistent-list-newline": "off",
 			"jsdoc/informative-docs": "off",
 			"perfectionist/sort-objects": [
 				"error",
