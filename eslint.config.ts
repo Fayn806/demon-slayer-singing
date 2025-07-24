@@ -22,7 +22,10 @@ export default style(
 		react: true,
 		rules: {
 			"antfu/consistent-list-newline": "off",
+			"better-max-params/better-max-params": "off",
 			"jsdoc/informative-docs": "off",
+			"max-lines": "off",
+			"max-lines-per-function": "off",
 			"perfectionist/sort-objects": [
 				"error",
 				{
