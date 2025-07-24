@@ -152,7 +152,6 @@ export class EggService implements OnPlayerIslandLoad {
 			instanceId: `egg_${userId}_${currentTime}`,
 			itemType: ItemType.Egg,
 			luckBonus: math.random(1, 10),
-			moveProgress: 0,
 			moveStartTime: currentTime,
 			mutations: [],
 			placeRange: 5,

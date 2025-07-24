@@ -53,9 +53,9 @@ export interface SpeedHistoryEntry {
 }
 
 export interface PlayerConveyorState {
+	lastEggGenerationTime: number;
 	speedMode: ConveyorSpeedMode;
 	speedModeHistory: Array<SpeedHistoryEntry>;
-	lastEggGenerationTime: number;
 }
 
 export interface PlayerState {

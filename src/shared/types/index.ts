@@ -116,8 +116,6 @@ export interface ConveyorEgg extends EggInstance {
 	discountedPrice?: number;
 	/** 移动开始时间. */
 	moveStartTime: number;
-	/** 移动进度. */
-	moveProgress: number;
 }
 
 /** 错过的蛋. */
