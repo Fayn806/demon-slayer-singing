@@ -1,0 +1,70 @@
+import type { ConveyorEgg, MissedEgg, PlayerInventoryItem, PlayerPlacedItem } from "shared/types";
+
+// export interface PlayerPlotState {
+// 	conveyor: {
+// 		speed: number;
+// 	};
+// 	eggs: {
+// 		conveyor: Array<ConveyorEgg>;
+// 		missed: Array<MissedEgg>;
+// 	};
+// 	expands: Record<string, Record<string, boolean>>;
+// 	island: {
+// 		id: string;
+// 		index: number;
+// 	};
+// 	placed: Record<string, Array<PlayerPlacedItem>>;
+// }
+
+export interface IslandState {
+	eggs: {
+		conveyor: Array<ConveyorEgg>;
+		missed: Array<MissedEgg>;
+	};
+	/** 玩家已装备的物品. */
+	equipped: Array<PlayerInventoryItem>;
+	expands: Record<string, boolean>;
+	/** 玩家手持物品. */
+	heldItem?: PlayerInventoryItem;
+	/** 玩家背包物品. */
+	inventory: Array<PlayerInventoryItem>;
+	placed: Array<PlayerPlacedItem>;
+}
+
+export type PlayerIslandState = Record<string, IslandState>;
+
+export interface PlayerPlotState {
+	/** 玩家位置编号. */
+	index: number;
+	/** 玩家岛屿ID. */
+	islandId: string;
+}
+
+export enum ConveyorSpeedMode {
+	Slow = 1,
+	Normal = 2,
+	Fast = 3,
+}
+
+/** 速度历史记录接口. */
+export interface SpeedHistoryEntry {
+	speedMode: ConveyorSpeedMode;
+	time: number;
+}
+
+export interface PlayerConveyorState {
+	speedMode: ConveyorSpeedMode;
+	speedModeHistory: Array<SpeedHistoryEntry>;
+	lastEggGenerationTime: number;
+}
+
+export interface PlayerState {
+	/** 玩家传送带状态. */
+	conveyor: PlayerConveyorState;
+	/** 玩家岛屿数据. */
+	islands: PlayerIslandState;
+	/** 玩家地块信息. */
+	plot: PlayerPlotState;
+}
+
+export type PlayersState = Readonly<Record<string, PlayerState | undefined>>;
