@@ -5,12 +5,16 @@ import Log from "@rbxts/log";
 import { GAME_NAME } from "shared/constants";
 import { setupLogger } from "shared/functions/setup-logger";
 
+import type { RootStore } from "./store";
+import { store } from "./store";
+
 function start(): void {
 	setupLogger();
 
 	Log.Info(`${GAME_NAME} is starting up! Version: ${game.PlaceVersion}`);
 
 	Modding.registerDependency<Logger>(ctor => Log.ForContext(ctor));
+	Modding.registerDependency<RootStore>(() => store);
 
 	Flamework.addPaths("src/server/services");
 

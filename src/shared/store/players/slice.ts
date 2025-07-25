@@ -1,6 +1,7 @@
 import { createProducer } from "@rbxts/reflex";
 import { Workspace } from "@rbxts/services";
 
+import { CONVEYOR_CONSTANTS } from "shared/constants/game";
 import type {
 	ConveyorEgg,
 	MissedEgg,
@@ -35,7 +36,7 @@ function createInitialPlayerState(): PlayerState {
 		islands: {},
 		plot: {
 			index: 0,
-			islandId: "",
+			islandId: "island1",
 		},
 	};
 }
@@ -171,7 +172,7 @@ export const playersSlice = createProducer({} as PlayersState, {
 		}
 
 		const currentIslandState = getCurrentIslandState(playerState);
-		const currentTime = tick();
+		const currentTime = Workspace.GetServerTimeNow();
 		const newMissedEggs = currentIslandState.eggs.missed.filter(
 			egg => egg.expireTime > currentTime,
 		);
@@ -331,6 +332,13 @@ export const playersSlice = createProducer({} as PlayersState, {
 			reserveTime: timeData.reserveTime,
 		} as MissedEgg;
 
+		// 确保错过的蛋数量不超过最大限制
+		const missedEggs = [...currentIslandState.eggs.missed, missedEgg];
+		if (missedEggs.size() > CONVEYOR_CONSTANTS.MAX_MISSED_EGGS) {
+			// 如果超过最大数量，移除最早的一个
+			missedEggs.unorderedRemove(0);
+		}
+
 		const updatedIslandState = {
 			...currentIslandState,
 			eggs: {
@@ -389,7 +397,7 @@ export const playersSlice = createProducer({} as PlayersState, {
 			itemType: conveyorEgg.itemType,
 			luckBonus: conveyorEgg.luckBonus,
 			mutations: conveyorEgg.mutations,
-			obtainTime: tick(),
+			obtainTime: Workspace.GetServerTimeNow(),
 			placeRange: conveyorEgg.placeRange,
 			sizeLuckBonus: conveyorEgg.sizeLuckBonus,
 			spawnTime: conveyorEgg.spawnTime,
@@ -461,7 +469,7 @@ export const playersSlice = createProducer({} as PlayersState, {
 			itemType: missedEgg.itemType,
 			luckBonus: missedEgg.luckBonus,
 			mutations: missedEgg.mutations,
-			obtainTime: tick(),
+			obtainTime: Workspace.GetServerTimeNow(),
 			placeRange: missedEgg.placeRange,
 			sizeLuckBonus: missedEgg.sizeLuckBonus,
 			spawnTime: missedEgg.spawnTime,

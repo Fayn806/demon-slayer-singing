@@ -5,6 +5,8 @@ import Log from "@rbxts/log";
 import { GAME_NAME } from "shared/constants";
 import { setupLogger } from "shared/functions/setup-logger";
 
+import type { RootStore } from "./store";
+import { store } from "./store";
 import { createApp, reactConfig } from "./ui/react-config";
 
 function start(): void {
@@ -14,6 +16,7 @@ function start(): void {
 	Log.Info(`${GAME_NAME} client version: ${game.PlaceVersion}`);
 
 	Modding.registerDependency<Logger>(ctor => Log.ForContext(ctor));
+	Modding.registerDependency<RootStore>(() => store);
 
 	Flamework.addPaths("src/client/controllers");
 

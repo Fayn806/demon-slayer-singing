@@ -1,4 +1,16 @@
 interface ReplicatedStorage {
+	"Assets": Folder & {
+		Eggs: Folder & {
+			Egg1: Model;
+			Egg2: Model;
+			Egg3: Model;
+			Egg4: Model;
+			Egg5: Model;
+			Egg6: Model;
+			Egg7: Model;
+			Egg8: Model;
+		};
+	};
 	"rbxts_include": Folder & {
 		Promise: ModuleScript;
 		RuntimeLib: ModuleScript;
@@ -77,4 +89,32 @@ interface ServerScriptService {
 
 interface Workspace {
 	Baseplate: Part;
+	Main: Folder & {
+		Plots: Folder & {
+			"1": Folder & {
+				Respawn: Part;
+			};
+			"2": Folder & {
+				Respawn: Part;
+			};
+			"3": Folder & {
+				Respawn: Part;
+			};
+			"4": Folder & {
+				Respawn: Part;
+			};
+			"5": Folder & {
+				Respawn: Part;
+			};
+			"6": Folder & {
+				Respawn: Part;
+			};
+			"7": Folder & {
+				Respawn: Part;
+			};
+			"8": Folder & {
+				Respawn: Part;
+			};
+		};
+	};
 }

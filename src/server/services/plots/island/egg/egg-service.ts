@@ -4,8 +4,9 @@ import { Workspace } from "@rbxts/services";
 
 import type { PlayerEntity } from "server/services/player/player-entity";
 import { store } from "server/store";
-import { CONVEYOR_CONSTANTS } from "shared/constants/conveyor";
-import type { ConveyorEgg, MissedEgg } from "shared/types";
+import { CONVEYOR_CONSTANTS, LOOP_DURATION } from "shared/constants/game";
+import type { IslandState, PlayerState } from "shared/store/players/types";
+import type { ConveyorEgg, EggId, MissedEgg } from "shared/types";
 import { ItemType } from "shared/types";
 import { isEggMissed } from "shared/util/egg-util";
 
@@ -15,7 +16,10 @@ import type { OnPlayerIslandLoad } from "../island-service";
 export class EggService implements OnPlayerIslandLoad {
 	/** 基础蛋生成间隔（秒），会根据传送带速度调整. */
 	private readonly baseEggGenerationInterval = 5;
+	/** 过期蛋清理间隔（秒）. */
+	private readonly expiredEggCleanupInterval = 10;
 	private readonly playersEggGenerating = new Map<PlayerEntity, thread>();
+	private readonly playersLastCleanup = new Map<string, number>();
 
 	constructor(private readonly logger: Logger) {}
 
@@ -40,6 +44,284 @@ export class EggService implements OnPlayerIslandLoad {
 		}
 
 		this.playersEggGenerating.clear();
+		this.playersLastCleanup.clear();
+	}
+
+	/**
+	 * 手动在传送带上生成一个蛋.
+	 *
+	 * @param playerEntity - 玩家实体.
+	 * @param eggId - 蛋的类型ID.
+	 * @param customProperties - 自定义属性（可选）.
+	 * @returns 生成的蛋对象.
+	 */
+	public spawnEgg(
+		playerEntity: PlayerEntity,
+		eggId: EggId,
+		customProperties?: Partial<ConveyorEgg>,
+	): ConveyorEgg {
+		const { userId } = playerEntity;
+		const conveyorEgg = this.createConveyorEgg(
+			playerEntity,
+			eggId,
+			`egg_${userId}_${Workspace.GetServerTimeNow()}_${math.random()}`,
+			customProperties,
+		);
+
+		store.spawnEggOnConveyor(userId, conveyorEgg);
+		this.logger.Info(`Manually spawned egg ${conveyorEgg.instanceId} for player ${userId}.`);
+
+		return conveyorEgg;
+	}
+
+	/**
+	 * 移除传送带上的指定蛋（将其移动到错过区域）.
+	 *
+	 * @param playerEntity - 玩家实体.
+	 * @param eggInstanceId - 蛋实例ID.
+	 * @param reserveTime - 保留时间（秒），如果不指定则使用默认值.
+	 * @returns 是否成功移除.
+	 */
+	public moveEggToMissed(
+		playerEntity: PlayerEntity,
+		eggInstanceId: string,
+		reserveTime?: number,
+	): boolean {
+		const { userId } = playerEntity;
+		const currentTime = Workspace.GetServerTimeNow();
+
+		// 计算过期时间
+		const defaultReserveTime = 30;
+		const actualReserveTime = reserveTime ?? defaultReserveTime;
+		const expireTime = currentTime + actualReserveTime;
+
+		try {
+			store.moveEggToMissed(userId, eggInstanceId, {
+				expireTime,
+				reserveTime: currentTime,
+			});
+
+			this.logger.Info(`Moved egg ${eggInstanceId} to missed area for player ${userId}.`);
+			return true;
+		} catch (err) {
+			this.logger.Warn(
+				`Failed to move egg ${eggInstanceId} to missed area for player ${userId}: ${err}`,
+			);
+			return false;
+		}
+	}
+
+	/**
+	 * 清理过期的错过蛋.
+	 *
+	 * @param playerEntity - 玩家实体.
+	 * @returns 清理的蛋数量.
+	 */
+	public cleanupExpiredMissedEggs(playerEntity: PlayerEntity): number {
+		const { userId } = playerEntity;
+		const currentIslandState = this.getCurrentIslandState(userId);
+		if (!currentIslandState) {
+			return 0;
+		}
+
+		const beforeCount = currentIslandState.eggs.missed.size();
+		store.cleanupExpiredMissedEggs(userId);
+
+		// 重新获取状态以计算清理数量
+		const updatedIslandState = this.getCurrentIslandState(userId);
+		if (!updatedIslandState) {
+			return 0;
+		}
+
+		const afterCount = updatedIslandState.eggs.missed.size();
+		const cleanedCount = beforeCount - afterCount;
+
+		if (cleanedCount > 0) {
+			this.logger.Info(
+				`Cleaned up ${cleanedCount} expired missed eggs for player ${userId}.`,
+			);
+		}
+
+		return cleanedCount;
+	}
+
+	/**
+	 * 获取玩家当前岛屿的所有传送带蛋.
+	 *
+	 * @param playerEntity - 玩家实体.
+	 * @returns 传送带蛋数组.
+	 */
+	public getConveyorEggs(playerEntity: PlayerEntity): Array<ConveyorEgg> {
+		const { userId } = playerEntity;
+		const currentIslandState = this.getCurrentIslandState(userId);
+		return currentIslandState?.eggs.conveyor ?? [];
+	}
+
+	/**
+	 * 获取玩家当前岛屿的所有错过蛋.
+	 *
+	 * @param playerEntity - 玩家实体.
+	 * @returns 错过蛋数组.
+	 */
+	public getMissedEggs(playerEntity: PlayerEntity): Array<MissedEgg> {
+		const { userId } = playerEntity;
+		const currentIslandState = this.getCurrentIslandState(userId);
+		return currentIslandState?.eggs.missed ?? [];
+	}
+
+	/**
+	 * 根据实例ID查找传送带蛋.
+	 *
+	 * @param playerEntity - 玩家实体.
+	 * @param eggInstanceId - 蛋实例ID.
+	 * @returns 蛋对象或undefined.
+	 */
+	public findConveyorEgg(
+		playerEntity: PlayerEntity,
+		eggInstanceId: string,
+	): ConveyorEgg | undefined {
+		const conveyorEggs = this.getConveyorEggs(playerEntity);
+		return conveyorEggs.find(egg => egg.instanceId === eggInstanceId);
+	}
+
+	/**
+	 * 根据实例ID查找错过蛋.
+	 *
+	 * @param playerEntity - 玩家实体.
+	 * @param eggInstanceId - 蛋实例ID.
+	 * @returns 错过蛋对象或undefined.
+	 */
+	public findMissedEgg(playerEntity: PlayerEntity, eggInstanceId: string): MissedEgg | undefined {
+		const missedEggs = this.getMissedEggs(playerEntity);
+		return missedEggs.find(egg => egg.instanceId === eggInstanceId);
+	}
+
+	/**
+	 * 获取蛋的统计信息.
+	 *
+	 * @param playerEntity - 玩家实体.
+	 * @returns 蛋统计信息.
+	 */
+	public getEggStats(playerEntity: PlayerEntity): {
+		conveyorCount: number;
+		lastGenerationTime: number;
+		missedCount: number;
+		totalGenerated: number;
+	} {
+		const { userId } = playerEntity;
+		const playerState = this.getPlayerState(userId);
+
+		if (!playerState) {
+			return {
+				conveyorCount: 0,
+				lastGenerationTime: 0,
+				missedCount: 0,
+				totalGenerated: 0,
+			};
+		}
+
+		const currentIslandState = this.getCurrentIslandState(userId);
+		if (!currentIslandState) {
+			return {
+				conveyorCount: 0,
+				lastGenerationTime: playerState.conveyor.lastEggGenerationTime,
+				missedCount: 0,
+				totalGenerated: 0,
+			};
+		}
+
+		const conveyorCount = currentIslandState.eggs.conveyor.size();
+		const missedCount = currentIslandState.eggs.missed.size();
+
+		return {
+			conveyorCount,
+			lastGenerationTime: playerState.conveyor.lastEggGenerationTime,
+			missedCount,
+			totalGenerated: conveyorCount + missedCount,
+		};
+	}
+
+	/**
+	 * 强制立即生成一个蛋（忽略时间间隔）.
+	 *
+	 * @param playerEntity - 玩家实体.
+	 * @param eggId - 蛋类型ID（可选）.
+	 * @returns 生成的蛋对象.
+	 */
+	public forceGenerateEgg(playerEntity: PlayerEntity, eggId?: EggId): ConveyorEgg {
+		const { userId } = playerEntity;
+		this.logger.Info(`Force generating egg for player ${userId}.`);
+
+		const currentTime = Workspace.GetServerTimeNow();
+		const actualEggId: EggId = eggId ?? "Egg1";
+		const conveyorEgg = this.createConveyorEgg(
+			playerEntity,
+			actualEggId,
+			`egg_${userId}_${currentTime}`,
+		);
+
+		store.spawnEggOnConveyor(userId, conveyorEgg);
+		this.logger.Info(`Force generated egg ${conveyorEgg.instanceId} for player ${userId}.`);
+
+		return conveyorEgg;
+	}
+
+	/**
+	 * 创建一个ConveyorEgg对象的通用方法.
+	 *
+	 * @param _playerEntity - 玩家实体.
+	 * @param eggId - 蛋类型ID.
+	 * @param instanceId - 蛋实例ID.
+	 * @param customProperties - 自定义属性（可选）.
+	 * @returns 创建的ConveyorEgg对象.
+	 */
+	private createConveyorEgg(
+		_playerEntity: PlayerEntity,
+		eggId: EggId,
+		instanceId: string,
+		customProperties?: Partial<ConveyorEgg>,
+	): ConveyorEgg {
+		const currentTime = Workspace.GetServerTimeNow();
+
+		const baseEgg: ConveyorEgg = {
+			eggId,
+			instanceId,
+			itemType: ItemType.Egg,
+			luckBonus: math.random(1, 10),
+			moveStartTime: currentTime + CONVEYOR_CONSTANTS.EGG_MOVE_DELAY,
+			mutations: [],
+			placeRange: 5,
+			sizeLuckBonus: math.random(1, 5),
+			spawnTime: currentTime,
+		};
+
+		// 应用自定义属性
+		return customProperties ? { ...baseEgg, ...customProperties } : baseEgg;
+	}
+
+	/**
+	 * 获取玩家状态的通用方法.
+	 *
+	 * @param userId - 玩家用户ID.
+	 * @returns 玩家状态或undefined.
+	 */
+	private getPlayerState(userId: string): PlayerState | undefined {
+		return store.getState().players[userId];
+	}
+
+	/**
+	 * 获取玩家当前岛屿状态的通用方法.
+	 *
+	 * @param userId - 玩家用户ID.
+	 * @returns 当前岛屿状态或undefined.
+	 */
+	private getCurrentIslandState(userId: string): IslandState | undefined {
+		const playerState = this.getPlayerState(userId);
+		if (!playerState) {
+			return;
+		}
+
+		return playerState.islands[playerState.plot.islandId];
 	}
 
 	private startEggGeneration(playerEntity: PlayerEntity): void {
@@ -48,8 +330,23 @@ export class EggService implements OnPlayerIslandLoad {
 
 		const generationThread = task.spawn(() => {
 			while (true) {
+				const currentTime = Workspace.GetServerTimeNow();
+
 				// 检查并处理错过的蛋
 				this.checkMissedEggs(playerEntity);
+
+				// 定期检查并清理过期的错过蛋（避免过于频繁的清理）
+				const lastCleanupTime = this.playersLastCleanup.get(userId) ?? 0;
+				if (currentTime - lastCleanupTime >= this.expiredEggCleanupInterval) {
+					const cleanedCount = this.cleanupExpiredMissedEggs(playerEntity);
+					if (cleanedCount > 0) {
+						this.logger.Debug(
+							`Cleaned ${cleanedCount} expired eggs for player ${userId} in generation thread.`,
+						);
+					}
+
+					this.playersLastCleanup.set(userId, currentTime);
+				}
 
 				// 检查是否需要生成新蛋
 				const shouldGenerate = this.shouldGenerateEgg(playerEntity);
@@ -58,7 +355,7 @@ export class EggService implements OnPlayerIslandLoad {
 				}
 
 				// 等待一段时间再进行下一次检查
-				task.wait(0.1);
+				task.wait(LOOP_DURATION);
 			}
 		});
 
@@ -66,6 +363,7 @@ export class EggService implements OnPlayerIslandLoad {
 	}
 
 	private stopEggGeneration(playerEntity: PlayerEntity): void {
+		const { userId } = playerEntity;
 		const existingThread = this.playersEggGenerating.get(playerEntity);
 		if (!existingThread) {
 			return;
@@ -73,12 +371,13 @@ export class EggService implements OnPlayerIslandLoad {
 
 		task.cancel(existingThread);
 		this.playersEggGenerating.delete(playerEntity);
-		this.logger.Info(`Stopped egg generation for player ${playerEntity.userId}.`);
+		this.playersLastCleanup.delete(userId);
+		this.logger.Info(`Stopped egg generation for player ${userId}.`);
 	}
 
 	private checkMissedEggs(playerEntity: PlayerEntity): void {
 		const { userId } = playerEntity;
-		const playerState = store.getState().players[userId];
+		const playerState = this.getPlayerState(userId);
 
 		if (!playerState) {
 			return;
@@ -86,7 +385,7 @@ export class EggService implements OnPlayerIslandLoad {
 
 		const currentTime = Workspace.GetServerTimeNow();
 		const { speedMode, speedModeHistory } = playerState.conveyor;
-		const currentIslandState = playerState.islands[playerState.plot.islandId];
+		const currentIslandState = this.getCurrentIslandState(userId);
 
 		if (!currentIslandState) {
 			return;
@@ -126,7 +425,7 @@ export class EggService implements OnPlayerIslandLoad {
 
 	private shouldGenerateEgg(playerEntity: PlayerEntity): boolean {
 		const { userId } = playerEntity;
-		const playerState = store.getState().players[userId];
+		const playerState = this.getPlayerState(userId);
 
 		if (!playerState) {
 			return false;
@@ -145,19 +444,11 @@ export class EggService implements OnPlayerIslandLoad {
 		const { userId } = playerEntity;
 		this.logger.Info(`Generating egg for player ${userId}.`);
 
-		const currentTime = Workspace.GetServerTimeNow();
-
-		const conveyorEgg: ConveyorEgg = {
-			eggId: "Egg1",
-			instanceId: `egg_${userId}_${currentTime}`,
-			itemType: ItemType.Egg,
-			luckBonus: math.random(1, 10),
-			moveStartTime: currentTime,
-			mutations: [],
-			placeRange: 5,
-			sizeLuckBonus: math.random(1, 5),
-			spawnTime: currentTime,
-		};
+		const conveyorEgg = this.createConveyorEgg(
+			playerEntity,
+			"Egg1" as EggId,
+			`egg_${userId}_${Workspace.GetServerTimeNow()}`,
+		);
 
 		// 添加蛋到传送带（会自动更新lastEggGenerationTime）
 		store.spawnEggOnConveyor(userId, conveyorEgg);

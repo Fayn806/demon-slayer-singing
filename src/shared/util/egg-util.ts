@@ -1,6 +1,6 @@
 import { Workspace } from "@rbxts/services";
 
-import { CONVEYOR_CONSTANTS } from "shared/constants/conveyor";
+import { CONVEYOR_CONSTANTS } from "shared/constants/game";
 import type { ConveyorSpeedMode, SpeedHistoryEntry } from "shared/store/players/types";
 import type { ConveyorConfig, ConveyorEgg } from "shared/types";
 
