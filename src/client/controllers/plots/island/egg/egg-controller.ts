@@ -6,52 +6,77 @@
  * @module EggController
  */
 
+import type { Components } from "@flamework/components";
 import type { OnStart } from "@flamework/core";
 import { Controller } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
-import { CollectionService, ReplicatedStorage, Workspace } from "@rbxts/services";
+import { ReplicatedStorage, Workspace } from "@rbxts/services";
 
 import { USER_ID } from "client/constants";
 import type { RootStore } from "client/store";
-import { selectLatestConveyorEgg } from "shared/store/players/selectors";
+import { selectLatestConveyorEgg, selectPlayerPlotIndex } from "shared/store/players/selectors";
+import type { PlayerPlotState } from "shared/store/players/types";
 import type { ConveyorEgg } from "shared/types";
-import { Tag } from "types/enum/tag";
+import type { EggModel } from "types/interfaces/components/egg";
+
+import type { PlotComponent } from "../../plot-component";
+import type { OnPlayerPlotLoaded } from "../../plot-controller";
 
 @Controller({})
-export class EggController implements OnStart {
+export class EggController implements OnStart, OnPlayerPlotLoaded {
 	constructor(
 		private readonly logger: Logger,
 		private readonly store: RootStore,
+		private readonly components: Components,
 	) {}
 
 	/** @ignore */
 	public onStart(): void {
 		this.logger.Info("EggController has started.");
+	}
+
+	public onPlayerPlotLoaded(
+		playerId: string,
+		_plot: PlayerPlotState,
+		_component: PlotComponent,
+	): void {
+		this.logger.Info(`Player ${playerId} plot loaded for EggController.`);
 		this.store.subscribe(selectLatestConveyorEgg(USER_ID), egg => {
 			this.logger.Verbose(`Latest conveyor egg for user ${USER_ID}: ${egg}`);
-			this.createEggModel(USER_ID, egg);
+			this.createConveyorEggModel(USER_ID, egg);
 		});
 	}
 
-	private createEggModel(playerId: string, egg: ConveyorEgg | undefined): Model {
+	private createConveyorEggModel(playerId: string, egg: ConveyorEgg | undefined): void {
 		if (!egg) {
 			this.logger.Warn("No egg data available to create model.");
-			return new Instance("Model");
+			return;
 		}
 
 		const eggModel = ReplicatedStorage.Assets.Eggs.FindFirstChild(egg.eggId);
 		if (!eggModel) {
 			this.logger.Warn(`Egg model not found for egg ID: ${egg.eggId}`);
-			return new Instance("Model");
+			return;
 		}
 
-		const eggInstance = eggModel.Clone() as Model;
+		const playerIndex = this.store.getState(selectPlayerPlotIndex(playerId));
+		if (playerIndex === undefined) {
+			this.logger.Warn(`Player index not found for player ID: ${playerId}`);
+		}
 
-		CollectionService.AddTag(eggInstance, Tag.Egg);
-		eggInstance.SetAttribute("instanceId", egg.instanceId);
-		eggInstance.SetAttribute("playerId", playerId);
+		const plotFolder = Workspace.Main.Plots.FindFirstChild(tostring(playerIndex));
+		if (!plotFolder) {
+			this.logger.Warn(`Plot folder not found for player index: ${playerIndex}`);
+			return;
+		}
 
-		eggInstance.Parent = Workspace;
-		return eggInstance;
+		const plotComponent = this.components.getComponent<PlotComponent>(plotFolder);
+		if (!plotComponent) {
+			this.logger.Warn(`Plot component not found for player index: ${playerIndex}`);
+			return;
+		}
+
+		const eggClone = eggModel.Clone();
+		plotComponent.addEggModel(eggClone as EggModel, playerId, egg.instanceId);
 	}
 }

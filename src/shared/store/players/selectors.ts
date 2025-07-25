@@ -33,6 +33,22 @@ export function selectPlayerState(
 }
 
 /**
+ * 选择所有玩家地块状态.
+ *
+ * @returns 所有玩家地块状态选择器函数.
+ */
+export function selectAllPlayerPlots(): (state: SharedState) => Array<PlayerPlotState> {
+	return (state: SharedState) => {
+		const plots: Array<PlayerPlotState> = [];
+		for (const [_, player] of pairs(state.players)) {
+			plots.push(player.plot);
+		}
+
+		return plots;
+	};
+}
+
+/**
  * 选择玩家地块状态.
  *
  * @param playerId - 玩家ID.
@@ -42,6 +58,18 @@ export function selectPlayerPlot(
 	playerId: string,
 ): (state: SharedState) => PlayerPlotState | undefined {
 	return (state: SharedState) => state.players[playerId]?.plot;
+}
+
+/**
+ * 选择玩家地块Index.
+ *
+ * @param playerId - 玩家ID.
+ * @returns 玩家地块状态选择器函数.
+ */
+export function selectPlayerPlotIndex(
+	playerId: string,
+): (state: SharedState) => number | undefined {
+	return (state: SharedState) => state.players[playerId]?.plot.index;
 }
 
 /**

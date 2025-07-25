@@ -31,11 +31,16 @@ function createInitialPlayerState(): PlayerState {
 		conveyor: {
 			lastEggGenerationTime: 0,
 			speedMode: ConveyorSpeedMode.Slow,
-			speedModeHistory: [],
+			speedModeHistory: [
+				{
+					speedMode: ConveyorSpeedMode.Slow,
+					time: 0,
+				},
+			],
 		},
 		islands: {},
 		plot: {
-			index: 0,
+			index: 1,
 			islandId: "island1",
 		},
 	};

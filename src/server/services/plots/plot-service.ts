@@ -44,6 +44,10 @@ export class PlotService implements OnStart, OnPlayerJoin, OnPlayerLeave, OnChar
 
 		player.LoadCharacter();
 		player.CharacterRemoving.Connect(() => {
+			if (!player.Parent) {
+				return;
+			}
+
 			player.LoadCharacter();
 		});
 	}

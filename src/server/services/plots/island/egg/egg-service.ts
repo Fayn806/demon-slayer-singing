@@ -15,7 +15,7 @@ import type { OnPlayerIslandLoad } from "../island-service";
 @Service({})
 export class EggService implements OnPlayerIslandLoad {
 	/** 基础蛋生成间隔（秒），会根据传送带速度调整. */
-	private readonly baseEggGenerationInterval = 5;
+	private readonly baseEggGenerationInterval = 3;
 	/** 过期蛋清理间隔（秒）. */
 	private readonly expiredEggCleanupInterval = 10;
 	private readonly playersEggGenerating = new Map<PlayerEntity, thread>();
@@ -384,7 +384,7 @@ export class EggService implements OnPlayerIslandLoad {
 		}
 
 		const currentTime = Workspace.GetServerTimeNow();
-		const { speedMode, speedModeHistory } = playerState.conveyor;
+		const { speedModeHistory } = playerState.conveyor;
 		const currentIslandState = this.getCurrentIslandState(userId);
 
 		if (!currentIslandState) {
@@ -395,7 +395,7 @@ export class EggService implements OnPlayerIslandLoad {
 		const missedEggs: Array<MissedEgg> = [];
 
 		for (const egg of currentIslandState.eggs.conveyor) {
-			if (isEggMissed(egg.moveStartTime, currentTime, speedModeHistory, speedMode)) {
+			if (isEggMissed(egg.moveStartTime, currentTime, speedModeHistory)) {
 				// 蛋已错过，转换为错过的蛋
 				const missedEgg: MissedEgg = {
 					...egg,

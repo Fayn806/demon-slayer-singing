@@ -1,12 +1,13 @@
 import { BaseComponent, Component } from "@flamework/components";
-import type { OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import type { Logger } from "@rbxts/log";
 import { RunService, TweenService } from "@rbxts/services";
 
+import type { PlotComponent } from "client/controllers/plots/plot-component";
 import type { RootStore } from "client/store";
 import { $NODE_ENV } from "rbxts-transform-env";
 import { selectConveyorEggById } from "shared/store/players/selectors";
+import { calculateEggProgress } from "shared/util/egg-util";
 import { Tag } from "types/enum/tag";
 
 import type { EggAttributes, EggModel } from "../../../../../../types/interfaces/components/egg";
@@ -15,11 +16,13 @@ import type { EggAttributes, EggModel } from "../../../../../../types/interfaces
 	refreshAttributes: $NODE_ENV === "development",
 	tag: Tag.Egg,
 })
-export class Egg extends BaseComponent<EggAttributes, EggModel> implements OnStart {
-	private readonly conveyorMoveTween?: Tween;
+export class EggComponent extends BaseComponent<EggAttributes, EggModel> {
 	private readonly janitor = new Janitor();
 
 	private effectConnections: Array<RBXScriptConnection> = [];
+	private lastWorldPosition: CFrame | undefined;
+	private movementConnection: RBXScriptConnection | undefined;
+	private plotComponent: PlotComponent | undefined;
 
 	constructor(
 		private readonly logger: Logger,
@@ -28,8 +31,9 @@ export class Egg extends BaseComponent<EggAttributes, EggModel> implements OnSta
 		super();
 	}
 
-	/** @ignore */
-	public onStart(): void {
+	public initialize(plotComponent: PlotComponent): void {
+		this.plotComponent = plotComponent;
+
 		this.logger.Info(`Egg component started for ${this.instance.GetFullName()}`);
 
 		// 设置点击事件
@@ -49,10 +53,14 @@ export class Egg extends BaseComponent<EggAttributes, EggModel> implements OnSta
 	public destroy(): void {
 		this.logger.Verbose(`Egg ${this.instance.GetFullName()} has been destroyed.`);
 
-		// 停止传送带移动
-		if (this.conveyorMoveTween) {
-			this.conveyorMoveTween.Cancel();
+		// 停止蛋移动
+		if (this.movementConnection) {
+			this.movementConnection.Disconnect();
+			this.movementConnection = undefined;
 		}
+
+		// 重置位置记录
+		this.lastWorldPosition = undefined;
 
 		// 停止所有特效
 		for (const connection of this.effectConnections) {
@@ -60,6 +68,10 @@ export class Egg extends BaseComponent<EggAttributes, EggModel> implements OnSta
 		}
 
 		this.effectConnections = [];
+
+		if (this.plotComponent) {
+			this.plotComponent.removeEggModel(this.attributes.instanceId);
+		}
 
 		this.janitor.Destroy();
 		super.destroy();
@@ -133,6 +145,29 @@ export class Egg extends BaseComponent<EggAttributes, EggModel> implements OnSta
 		lightTween.Play();
 	}
 
+	private getEggCurrentProgress(): number {
+		const egg = this.store.getState(
+			selectConveyorEggById(this.attributes.playerId, this.attributes.instanceId),
+		);
+		if (!egg) {
+			this.logger.Warn(
+				`Egg with instance ID ${this.attributes.instanceId} not found in state.`,
+			);
+			return 0;
+		}
+
+		const speedHistory = this.plotComponent?.getConveyorSpeedHistory() ?? [];
+
+		// 获取当前蛋的位置
+		return calculateEggProgress(egg.moveStartTime, undefined, speedHistory);
+	}
+
+	private getEggWorldPosition(startPosition: CFrame, endPosition: CFrame): CFrame {
+		const progress = this.getEggCurrentProgress();
+		// 计算世界坐标
+		return startPosition.Lerp(endPosition, progress);
+	}
+
 	/** 设置传送带移动. */
 	private setupConveyorMovement(): void {
 		// 传送带移动逻辑将在后续实现
@@ -141,6 +176,28 @@ export class Egg extends BaseComponent<EggAttributes, EggModel> implements OnSta
 		// 3. 使用 TweenService 实现平滑移动
 
 		this.logger.Verbose(`Setting up conveyor movement for egg ${this.attributes.instanceId}`);
+		const startPosition = this.plotComponent?.getEggMoveStartPosition();
+		const endPosition = this.plotComponent?.getEggMoveEndPosition();
+		if (!startPosition || !endPosition) {
+			this.logger.Warn("Egg move start or end position is not defined.");
+			return;
+		}
+
+		// 使用平滑移动
+		this.movementConnection = RunService.Heartbeat.Connect(deltaTime => {
+			const targetPosition = this.getEggWorldPosition(startPosition, endPosition);
+
+			if (!this.lastWorldPosition) {
+				/** 首次设置位置. */
+				this.lastWorldPosition = targetPosition;
+				this.instance.PivotTo(targetPosition);
+			} else {
+				/** 使用插值平滑移动，值越大移动越快. */
+				const lerpFactor = math.min(deltaTime * 15, 1);
+				this.lastWorldPosition = this.lastWorldPosition.Lerp(targetPosition, lerpFactor);
+				this.instance.PivotTo(this.lastWorldPosition);
+			}
+		});
 
 		// 暂时的占位符实现
 		// const startPosition = new Vector3(0, 0, 0); // 从传送带配置获取起始位置

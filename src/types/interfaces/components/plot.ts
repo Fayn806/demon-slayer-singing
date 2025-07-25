@@ -3,7 +3,7 @@ export interface PlotAttributes {
 	/** 玩家ID. */
 	playerId: string;
 	/** Plot 编号 (1-8). */
-	plotNumber: number;
+	plotIndex: number;
 }
 
 /** Plot 模型接口. */
@@ -17,10 +17,10 @@ export interface PlotFolder extends Folder {
 		/** 传送带终点. */
 		Finish: Part;
 		/** 错过的蛋存放区域. */
-		MissedEggs: Folder;
+		MissedEggs: Part;
 		/** 生成点. */
 		Spawn: Part;
-	} & Model;
+	} & Folder;
 	/** 蛋相关文件夹. */
 	Eggs: Folder;
 	/** 扩展相关文件夹. */
@@ -30,15 +30,9 @@ export interface PlotFolder extends Folder {
 	/** 物品系统. */
 	Items: Folder;
 	/** 锁定区域. */
-	Locked: Folder;
+	Locked: Model;
 	/** 锁定传送门. */
-	LockedPortal: Folder;
-	/** 随机数生成器相关. */
-	RNG: Folder;
-	/** 标识系统. */
-	Sign: Folder;
-	/** 生成点配置. */
-	Spawn: SpawnLocation;
+	LockedPortal: Model;
 }
 
 /** Plot 数据类型. */

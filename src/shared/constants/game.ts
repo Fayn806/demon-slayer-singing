@@ -6,7 +6,7 @@ export const CONVEYOR_CONSTANTS = {
 	BASE_MOVE_TIME: 10,
 
 	/** 蛋掉落的位置百分比（0-1）. */
-	EGG_DROP_POSITION: 0.9,
+	EGG_DROP_POSITION: 1,
 
 	/** 蛋移动时间延迟（秒）. */
 	EGG_MOVE_DELAY: 0.2,
@@ -19,6 +19,12 @@ export const CONVEYOR_CONSTANTS = {
 
 	/** 速度变化的平滑时间（秒）- 避免速度突变造成的视觉抖动. */
 	SPEED_TRANSITION_TIME: 0.5,
+} as const;
+
+export const EGG_MOVE_DURATION_CONSTANTS = {
+	FAST: 7.5,
+	NORMAL: 10,
+	SLOW: 30,
 } as const;
 
 /** 游戏循环的持续时间（秒）. */
