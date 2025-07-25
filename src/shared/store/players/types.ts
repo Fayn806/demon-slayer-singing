@@ -1,21 +1,5 @@
 import type { ConveyorEgg, MissedEgg, PlayerInventoryItem, PlayerPlacedItem } from "shared/types";
 
-// export interface PlayerPlotState {
-// 	conveyor: {
-// 		speed: number;
-// 	};
-// 	eggs: {
-// 		conveyor: Array<ConveyorEgg>;
-// 		missed: Array<MissedEgg>;
-// 	};
-// 	expands: Record<string, Record<string, boolean>>;
-// 	island: {
-// 		id: string;
-// 		index: number;
-// 	};
-// 	placed: Record<string, Array<PlayerPlacedItem>>;
-// }
-
 export interface IslandState {
 	eggs: {
 		conveyor: Array<ConveyorEgg>;

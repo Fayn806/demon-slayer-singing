@@ -55,12 +55,7 @@ export class ExpandService implements OnPlayerIslandLoad {
 
 		// 这里可以添加成本检查逻辑
 		if (cost !== undefined) {
-			// 检查玩家是否有足够资源进行扩展
-			// const hasEnoughResources = this.checkPlayerResources(playerEntity, cost);
-			// if (!hasEnoughResources) {
-			//     this.logger.Warn(`Player ${userId} doesn't have enough resources to expand.`);
-			//     return false;
-			// }
+			// TODO: 实现资源检查逻辑
 		}
 
 		// 执行扩展

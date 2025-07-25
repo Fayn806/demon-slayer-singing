@@ -1,9 +1,9 @@
-import { Service, type OnStart } from "@flamework/core";
+import { type OnStart, Service } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
 
 import type { PlayerEntity } from "server/services/player/player-entity";
 import { store } from "server/store";
-import { setupLifecycle, type ListenerData } from "shared/util/flamework-util";
+import { type ListenerData, setupLifecycle } from "shared/util/flamework-util";
 
 import type { OnPlayerPlotJoin } from "../plot-service";
 
@@ -23,10 +23,10 @@ export class IslandService implements OnStart, OnPlayerPlotJoin {
 
 	constructor(private readonly logger: Logger) {}
 
-    public onStart(): void {
-        setupLifecycle<OnPlayerIslandLoad>(this.islandLoadEvents);
-        this.logger.Info("IslandService has started and is ready to manage island loads.");
-    }
+	public onStart(): void {
+		setupLifecycle<OnPlayerIslandLoad>(this.islandLoadEvents);
+		this.logger.Info("IslandService has started and is ready to manage island loads.");
+	}
 
 	public onPlayerPlotJoin(playerEntity: PlayerEntity): void {
 		const { userId } = playerEntity;

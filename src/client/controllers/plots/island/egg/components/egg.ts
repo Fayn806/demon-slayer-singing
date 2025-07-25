@@ -79,17 +79,7 @@ export class EggComponent extends BaseComponent<EggAttributes, EggModel> {
 
 	/** 设置交互处理. */
 	private setupInteraction(): void {
-		// const clickDetector = this.instance.ClickDetector;
-		// if (clickDetector === undefined) {
-		// 	return;
-		// }
-		// const clickConnection = clickDetector.MouseClick.Connect((player: Player) => {
-		// 	if (player !== this.localPlayer) {
-		// 		return;
-		// 	}
-		// 	this.handleEggClick();
-		// });
-		// this.janitor.Add(clickConnection);
+		// TODO: 实现点击交互功能
 	}
 
 	/** 处理蛋被点击. */
@@ -198,20 +188,6 @@ export class EggComponent extends BaseComponent<EggAttributes, EggModel> {
 				this.instance.PivotTo(this.lastWorldPosition);
 			}
 		});
-
-		// 暂时的占位符实现
-		// const startPosition = new Vector3(0, 0, 0); // 从传送带配置获取起始位置
-		// const endPosition = new Vector3(10, 0, 0);   // 从传送带配置获取结束位置
-		// const moveDuration = 5; // 从配置获取移动时长
-
-		// this.conveyorMoveTween = TweenService.Create(
-		// 	this.instance.PrimaryPart,
-		// 	new TweenInfo(moveDuration, Enum.EasingStyle.Linear),
-		// 	{ Position: endPosition },
-		// );
-
-		// this.conveyorMoveTween.Play();
-		// this.janitor.Add(this.conveyorMoveTween);
 	}
 
 	/** 设置蛋的特效. */
