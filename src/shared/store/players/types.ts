@@ -22,6 +22,8 @@ export interface PlayerPlotState {
 	index: number;
 	/** 玩家岛屿ID. */
 	islandId: string;
+	/** 玩家Id. */
+	playerId: string;
 }
 
 export enum ConveyorSpeedMode {

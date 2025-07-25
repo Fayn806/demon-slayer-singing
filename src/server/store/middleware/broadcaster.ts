@@ -8,7 +8,7 @@ import { remotes } from "shared/remotes";
 import type { SerializedSharedState, SharedState } from "shared/store";
 import { slices, stateSerDes } from "shared/store";
 
-export const ONCE_PER_MINUTE = 60;
+export const ONCE_PER_MINUTE = -1;
 
 export function broadcasterMiddleware(): ProducerMiddleware {
 	// Storybook support

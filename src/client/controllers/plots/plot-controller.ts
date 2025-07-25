@@ -1,11 +1,10 @@
 import type { Components } from "@flamework/components";
 import { Controller, type OnStart } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
-import { Workspace } from "@rbxts/services";
+import { Players, Workspace } from "@rbxts/services";
 
-import { USER_ID } from "client/constants";
 import { store } from "client/store";
-import { selectPlayerPlot } from "shared/store/players/selectors";
+import { selectAllPlayerPlots, selectPlayerPlot } from "shared/store/players/selectors";
 import type { PlayerPlotState } from "shared/store/players/types";
 import { type ListenerData, setupLifecycle } from "shared/util/flamework-util";
 import { waitForPlotStructure } from "shared/util/plot-util";
@@ -18,7 +17,7 @@ export interface OnPlayerPlotLoaded {
 
 @Controller({})
 export class PlotController implements OnStart {
-	private readonly plotComponents = new Map<string, Folder>();
+	private readonly plotComponents = new Map<string, PlotComponent>();
 	private readonly plotLoadEvents = new Array<ListenerData<OnPlayerPlotLoaded>>();
 
 	constructor(
@@ -29,13 +28,24 @@ export class PlotController implements OnStart {
 	public onStart(): void {
 		setupLifecycle<OnPlayerPlotLoaded>(this.plotLoadEvents);
 
-		const playerPlotState = store.getState(selectPlayerPlot(USER_ID));
-		if (playerPlotState) {
-			this.initializePlot(USER_ID, playerPlotState);
+		for (const player of Players.GetPlayers()) {
+			const playerId = tostring(player.UserId);
+			const playerPlotState = store.getState(selectPlayerPlot(playerId));
+			if (playerPlotState) {
+				this.initializePlot(playerId, playerPlotState);
+			} else {
+				this.logger.Warn(`No plot state found for player ${playerId}.`);
+			}
 		}
 
-		store.subscribe(selectPlayerPlot(USER_ID), plot => {
-			this.initializePlot(USER_ID, plot);
+		store.subscribe(selectAllPlayerPlots(), plots => {
+			for (const plot of plots) {
+				const { playerId } = plot;
+				if (!this.plotComponents.has(playerId)) {
+					this.logger.Info(`Initializing plot for player ${playerId}.`);
+					this.initializePlot(playerId, plot);
+				}
+			}
 		});
 	}
 
@@ -69,6 +79,8 @@ export class PlotController implements OnStart {
 					this.logger.Error(`Failed to create plot component for player ${playerId}.`);
 					return;
 				}
+
+                this.plotComponents.set(playerId, component);
 
 				for (const { event } of this.plotLoadEvents) {
 					event.onPlayerPlotLoaded(playerId, plot, component);

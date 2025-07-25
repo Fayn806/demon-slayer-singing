@@ -1,5 +1,5 @@
 import { createProducer } from "@rbxts/reflex";
-import { Workspace } from "@rbxts/services";
+import { Players, Workspace } from "@rbxts/services";
 
 import { CONVEYOR_CONSTANTS } from "shared/constants/game";
 import type {
@@ -40,8 +40,9 @@ function createInitialPlayerState(): PlayerState {
 		},
 		islands: {},
 		plot: {
-			index: 1,
+			index: math.max(Players.GetPlayers().size(), 1),
 			islandId: "island1",
+			playerId: "",
 		},
 	};
 }
@@ -560,6 +561,8 @@ export const playersSlice = createProducer({} as PlayersState, {
 	 */
 	playerJoined: (state, playerId: string, playerState?: PlayerState): PlayersState => {
 		const initialPlayerState = playerState ?? createInitialPlayerState();
+
+		initialPlayerState.plot.playerId = playerId;
 
 		// 清除islandState中的eggs.conveyor和missed
 		for (const [_islandId, islandState] of pairs(initialPlayerState.islands)) {

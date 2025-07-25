@@ -64,8 +64,22 @@ export class PlotService implements OnStart, OnPlayerJoin, OnPlayerLeave, OnChar
 	public onCharacterAdded(character: CharacterRig, playerEntity: PlayerEntity): void {
 		const { userId } = playerEntity;
 		this.logger.Info(`Character added for player ${userId}: ${character.Name}`);
+		const playerPlot = store.getState().players[userId]?.plot;
+		if (!playerPlot) {
+			this.logger.Warn(`No plot found for player ${userId} when adding character.`);
+			return;
+		}
+
+		const folder = Workspace.Main.Plots.FindFirstChild(tostring(playerPlot.index));
+		if (!folder) {
+			this.logger.Warn(
+				`Plot folder not found for player ${userId} at index ${playerPlot.index}.`,
+			);
+			return;
+		}
+
 		// Additional logic for character addition can be added here
-		const location = Workspace.Main.Plots[1].Respawn.CFrame;
+		const location = (folder as Folder & { Respawn: Part }).Respawn.CFrame;
 		character.PivotTo(location);
 	}
 }

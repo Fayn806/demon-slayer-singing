@@ -12,7 +12,6 @@ import { Controller } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
 import { ReplicatedStorage, Workspace } from "@rbxts/services";
 
-import { USER_ID } from "client/constants";
 import type { RootStore } from "client/store";
 import { selectLatestConveyorEgg, selectPlayerPlotIndex } from "shared/store/players/selectors";
 import type { PlayerPlotState } from "shared/store/players/types";
@@ -41,9 +40,9 @@ export class EggController implements OnStart, OnPlayerPlotLoaded {
 		_component: PlotComponent,
 	): void {
 		this.logger.Info(`Player ${playerId} plot loaded for EggController.`);
-		this.store.subscribe(selectLatestConveyorEgg(USER_ID), egg => {
-			this.logger.Verbose(`Latest conveyor egg for user ${USER_ID}: ${egg}`);
-			this.createConveyorEggModel(USER_ID, egg);
+		this.store.subscribe(selectLatestConveyorEgg(playerId), egg => {
+			this.logger.Verbose(`Latest conveyor egg for user ${playerId}: ${egg}`);
+			this.createConveyorEggModel(playerId, egg);
 		});
 	}
 
@@ -77,6 +76,10 @@ export class EggController implements OnStart, OnPlayerPlotLoaded {
 		}
 
 		const eggClone = eggModel.Clone();
-		plotComponent.addEggModel(eggClone as EggModel, playerId, egg.instanceId);
+		const created = plotComponent.addEggModel(eggClone as EggModel, playerId, egg.instanceId);
+		if (!created) {
+			this.logger.Error(`Failed to add egg model ${egg.instanceId} to plot ${playerIndex}.`);
+			return;
+		}
 	}
 }
