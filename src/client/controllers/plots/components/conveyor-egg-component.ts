@@ -1,16 +1,17 @@
+import type { Components } from "@flamework/components";
 import { BaseComponent, Component } from "@flamework/components";
 import { Janitor } from "@rbxts/janitor";
 import type { Logger } from "@rbxts/log";
 import { RunService, TweenService } from "@rbxts/services";
 
-import type { PlotComponent } from "client/controllers/plots/plot-component";
 import type { RootStore } from "client/store";
 import { $NODE_ENV } from "rbxts-transform-env";
 import { selectConveyorEggById } from "shared/store/players/selectors";
 import { calculateEggProgress } from "shared/util/egg-util";
 import { Tag } from "types/enum/tag";
 
-import type { EggAttributes, EggModel } from "../../../../../types/interfaces/components/egg";
+import type { EggAttributes, EggModel } from "../../../../types/interfaces/components/egg";
+import type { PlotComponent } from "./plot-component";
 
 @Component({
 	refreshAttributes: $NODE_ENV === "development",
@@ -27,6 +28,7 @@ export class ConveyorEggComponent extends BaseComponent<EggAttributes, EggModel>
 	constructor(
 		private readonly logger: Logger,
 		private readonly store: RootStore,
+		private readonly components: Components,
 	) {
 		super();
 	}
@@ -69,9 +71,7 @@ export class ConveyorEggComponent extends BaseComponent<EggAttributes, EggModel>
 
 		this.effectConnections = [];
 
-		if (this.plotComponent) {
-			this.plotComponent.removeEggModel(this.attributes.instanceId);
-		}
+		this.instance.Destroy();
 
 		this.janitor.Destroy();
 		super.destroy();
@@ -79,7 +79,18 @@ export class ConveyorEggComponent extends BaseComponent<EggAttributes, EggModel>
 
 	/** 设置交互处理. */
 	private setupInteraction(): void {
-		// TODO: 实现点击交互功能
+		const proximityPrompt = new Instance("ProximityPrompt");
+		proximityPrompt.ActionText = "Buy Egg";
+		proximityPrompt.Parent = this.instance;
+		proximityPrompt.MaxActivationDistance = 15;
+		proximityPrompt.HoldDuration = 0.15;
+		proximityPrompt.RequiresLineOfSight = false;
+
+		proximityPrompt.Triggered.Connect(() => {
+			this.handleEggClick();
+		});
+
+		this.janitor.Add(proximityPrompt);
 	}
 
 	/** 处理蛋被点击. */

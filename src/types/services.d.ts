@@ -11,6 +11,16 @@ interface ReplicatedStorage {
 			Egg8: Model;
 		};
 	};
+	"ExpandReserve": Folder & {
+		"1": Folder;
+		"2": Folder;
+		"3": Folder;
+		"4": Folder;
+		"5": Folder;
+		"6": Folder;
+		"7": Folder;
+		"8": Folder;
+	};
 	"rbxts_include": Folder & {
 		Promise: ModuleScript;
 		RuntimeLib: ModuleScript;
@@ -48,6 +58,7 @@ interface ReplicatedStorage {
 			"player-util": ModuleScript;
 		};
 	};
+
 	"TS-types": Folder & {
 		enum: Folder & {
 			badge: ModuleScript;

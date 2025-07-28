@@ -3,23 +3,29 @@ import { BaseComponent, Component } from "@flamework/components";
 import type { OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import type { Logger } from "@rbxts/log";
-import { CollectionService } from "@rbxts/services";
+import { ReplicatedStorage } from "@rbxts/services";
 
 import type { RootStore } from "client/store";
 import { $NODE_ENV } from "rbxts-transform-env";
-import { selectPlayerConveyor } from "shared/store/players/selectors";
+import {
+	selectConveyorEggs,
+	selectIslandExpansions,
+	selectPlayerConveyor,
+} from "shared/store/players/selectors";
 import { ConveyorSpeedMode, type SpeedHistoryEntry } from "shared/store/players/types";
+import type { ConveyorEgg } from "shared/types";
 import { Tag } from "types/enum/tag";
 import type { EggModel } from "types/interfaces/components/egg";
 import type { PlotAttributes, PlotFolder } from "types/interfaces/components/plot";
 
-import type { ConveyorEggComponent } from "./island/egg/conveyor-egg-component";
+import type { ConveyorEggComponent } from "./conveyor-egg-component";
 
 @Component({
 	refreshAttributes: $NODE_ENV === "development",
 	tag: Tag.Plot,
 })
 export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> implements OnStart {
+	private readonly conveyorEggComponents = new Map<string, ConveyorEggComponent>();
 	private readonly janitor = new Janitor();
 
 	constructor(
@@ -37,7 +43,7 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 		);
 
 		// 初始化 Plot 系统
-		// this.initializePlot();
+		this.initializePlot();
 	}
 
 	/** @ignore */
@@ -45,73 +51,6 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 		this.logger.Verbose(`Plot ${this.instance.GetFullName()} has been destroyed.`);
 		this.janitor.Destroy();
 		super.destroy();
-	}
-
-	/**
-	 * 添加蛋模型到 Eggs 文件夹.
-	 *
-	 * @param eggModel - 要添加的蛋模型.
-	 * @param playerId - 玩家ID.
-	 * @param eggInstanceId - 蛋的实例ID.
-	 * @returns 添加是否成功.
-	 */
-	public addEggModel(eggModel: EggModel, playerId: string, eggInstanceId: string): boolean {
-		try {
-			// 设置蛋模型的名称为实例ID
-			eggModel.Name = eggInstanceId;
-
-			// 将蛋模型添加到 Eggs 文件夹
-			eggModel.Parent = this.instance.Eggs;
-			eggModel.SetAttribute("instanceId", eggInstanceId);
-			eggModel.SetAttribute("playerId", playerId);
-
-			const eggComponent = this.components.addComponent<ConveyorEggComponent>(eggModel);
-			eggComponent.initialize(this);
-
-			this.logger.Verbose(
-				`Added egg model ${eggInstanceId} to plot ${this.attributes.plotIndex}`,
-			);
-			return true;
-		} catch (err) {
-			this.logger.Error(
-				`Failed to add egg model ${eggInstanceId} to plot ${this.attributes.plotIndex}: ${err}`,
-			);
-			return false;
-		}
-	}
-
-	/**
-	 * 从 Eggs 文件夹删除蛋模型.
-	 *
-	 * @param eggInstanceId - 要删除的蛋实例ID.
-	 * @returns 删除是否成功.
-	 */
-	public removeEggModel(eggInstanceId: string): boolean {
-		try {
-			const eggModel = this.instance.Eggs.FindFirstChild(eggInstanceId);
-			if (!eggModel) {
-				this.logger.Warn(
-					`Egg model ${eggInstanceId} not found in plot ${this.attributes.plotIndex}`,
-				);
-				return false;
-			}
-
-			// 移除 Egg 标签
-			CollectionService.RemoveTag(eggModel, Tag.Egg);
-
-			// 销毁蛋模型
-			eggModel.Destroy();
-
-			this.logger.Verbose(
-				`Removed egg model ${eggInstanceId} from plot ${this.attributes.plotIndex}`,
-			);
-			return true;
-		} catch (err) {
-			this.logger.Error(
-				`Failed to remove egg model ${eggInstanceId} from plot ${this.attributes.plotIndex}: ${err}`,
-			);
-			return false;
-		}
 	}
 
 	/**
@@ -144,10 +83,8 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 
 	/** 清空所有蛋模型. */
 	public clearAllEggs(): void {
-		const eggModels = this.getEggModels();
-
-		for (const eggModel of eggModels) {
-			this.removeEggModel(eggModel.Name);
+		for (const [_eggInstanceId, eggComponent] of pairs(this.conveyorEggComponents)) {
+			eggComponent.destroy();
 		}
 
 		this.logger.Info(`Cleared all eggs from plot ${this.attributes.plotIndex}`);
@@ -206,6 +143,33 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 		this.cleanupOrphanedEggs();
 
 		this.logger.Verbose(`Plot ${this.attributes.plotIndex} initialized successfully`);
+
+		this.initializeConveyorEggs();
+		this.initializeExpansions();
+	}
+
+	private initializeConveyorEggs(): void {
+		// 监听玩家蛋状态变化
+		this.janitor.Add(
+			this.store.subscribe(selectConveyorEggs(this.attributes.playerId), eggs => {
+				this.updateConveyorEggs(eggs);
+			}),
+		);
+	}
+
+	private initializeExpansions(): void {
+		const expansions = this.store.getState(selectIslandExpansions(this.attributes.playerId));
+		this.updateExpansions(expansions);
+
+		// 监听玩家扩展状态变化
+		this.janitor.Add(
+			this.store.subscribe(
+				selectIslandExpansions(this.attributes.playerId),
+				updatedExpansions => {
+					this.updateExpansions(updatedExpansions);
+				},
+			),
+		);
 	}
 
 	/** 清理孤立的蛋模型（没有对应状态的蛋）. */
@@ -218,5 +182,58 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 		this.logger.Verbose(
 			`Plot ${this.attributes.plotIndex} has ${currentEggs.size()} existing eggs`,
 		);
+	}
+
+	private updateConveyorEggs(eggs: Array<ConveyorEgg>): void {
+		// 更新当前 Plot 中的蛋模型
+		for (const egg of eggs) {
+			const eggComponent = this.conveyorEggComponents.get(egg.instanceId);
+			if (eggComponent) {
+				continue;
+			}
+
+			this.createConveyorEgg(egg);
+		}
+	}
+
+	private createConveyorEgg(egg: ConveyorEgg): void {
+		const eggModel = ReplicatedStorage.Assets.Eggs.FindFirstChild(egg.eggId);
+		if (!eggModel) {
+			this.logger.Warn(`Egg model ${egg.eggId} not found`);
+			return;
+		}
+
+		const clone = eggModel.Clone() as EggModel;
+		clone.SetAttribute("instanceId", egg.instanceId);
+		clone.SetAttribute("playerId", this.attributes.playerId);
+		clone.Parent = this.instance.Eggs;
+
+		// 创建 ConveyorEggComponent 实例并初始化
+		const conveyorEggComponent = this.components.addComponent<ConveyorEggComponent>(clone);
+		conveyorEggComponent.initialize(this);
+		this.conveyorEggComponents.set(egg.instanceId, conveyorEggComponent);
+	}
+
+	private updateExpansions(expansions: Record<string, boolean>): void {
+		for (const [expansionId, unlocked] of pairs(expansions)) {
+			if (unlocked) {
+				this.setExpansionExpanded(expansionId, true);
+				this.logger.Verbose(
+					`Player ${this.attributes.playerId} unlocked expansion: ${expansionId}`,
+				);
+			}
+		}
+	}
+
+	private setExpansionExpanded(expansionId: string, isExpanded: boolean): void {
+		const before = isExpanded ? this.instance.Expand : ReplicatedStorage.ExpandReserve;
+		const after = isExpanded ? ReplicatedStorage.ExpandReserve : this.instance.Expand;
+
+		const expansionModel = before.FindFirstChild(expansionId);
+		if (!expansionModel) {
+			return;
+		}
+
+		expansionModel.Parent = after;
 	}
 }

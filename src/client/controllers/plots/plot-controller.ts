@@ -9,7 +9,7 @@ import type { PlayerPlotState } from "shared/store/players/types";
 import { type ListenerData, setupLifecycle } from "shared/util/flamework-util";
 import { waitForPlotStructure } from "shared/util/plot-util";
 
-import type { PlotComponent } from "./plot-component";
+import type { PlotComponent } from "./components/plot-component";
 
 export interface OnPlayerPlotLoaded {
 	onPlayerPlotLoaded(playerId: string, plot: PlayerPlotState): void;
