@@ -1,4 +1,3 @@
-import type { Components } from "@flamework/components";
 import { BaseComponent, Component } from "@flamework/components";
 import { Janitor } from "@rbxts/janitor";
 import type { Logger } from "@rbxts/log";
@@ -28,7 +27,6 @@ export class ConveyorEggComponent extends BaseComponent<EggAttributes, EggModel>
 	constructor(
 		private readonly logger: Logger,
 		private readonly store: RootStore,
-		private readonly components: Components,
 	) {
 		super();
 	}

@@ -5,6 +5,8 @@ export enum ItemType {
 	Booster = "booster",
 	Decoration = "decoration",
 	Egg = "egg",
+	// 锤子
+	Hammer = "hammer",
 	HatchedPet = "hatched_pet",
 }
 
@@ -199,7 +201,7 @@ export interface PlayerPlacedBooster extends PlayerBooster {
 export type PlayerPlacedItem = PlayerPlacedBooster | PlayerPlacedEgg | PlayerPlacedPet;
 
 /** 玩家背包物品联合类型. */
-export type PlayerInventoryItem = PlayerBooster | PlayerEgg | PlayerPet;
+export type PlayerInventoryItem = BaseItemData | PlayerBooster | PlayerEgg | PlayerPet;
 
 /** 传送带配置接口. */
 export interface ConveyorConfig {

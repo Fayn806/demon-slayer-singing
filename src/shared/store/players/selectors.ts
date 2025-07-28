@@ -1,6 +1,7 @@
 import { createSelector } from "@rbxts/reflex";
 
 import type { ConveyorEgg, MissedEgg, PlayerInventoryItem, PlayerPlacedItem } from "shared/types";
+import { ItemType } from "shared/types";
 
 import type { SharedState } from "..";
 import type {
@@ -18,7 +19,7 @@ import type {
 /** 任意类型的蛋（传送带蛋或错过蛋）. */
 type AnyEgg = ConveyorEgg | MissedEgg;
 
-// ==================== 基础玩家状态选择器 ====================
+// ==================== 玩家状态选择器 ====================
 
 /**
  * 选择玩家状态.
@@ -31,6 +32,8 @@ export function selectPlayerState(
 ): (state: SharedState) => PlayerState | undefined {
 	return (state: SharedState) => state.players[playerId];
 }
+
+// ==================== 地块状态选择器 ====================
 
 /**
  * 选择所有玩家地块状态.
@@ -72,6 +75,8 @@ export function selectPlayerPlotIndex(
 ): (state: SharedState) => number | undefined {
 	return (state: SharedState) => state.players[playerId]?.plot.index;
 }
+
+// ==================== 基础玩家状态选择器 ====================
 
 /**
  * 选择玩家传送带状态.
@@ -350,7 +355,26 @@ export function selectHeldItem(
 ): (state: SharedState) => PlayerInventoryItem | undefined {
 	return createSelector(
 		selectCurrentIslandState(playerId),
-		(islandState): PlayerInventoryItem | undefined => islandState?.heldItem,
+		(islandState): PlayerInventoryItem | undefined => {
+			if (islandState?.heldIndex === undefined) {
+				return undefined;
+			}
+
+			return islandState.equipped[islandState.heldIndex];
+		},
+	);
+}
+
+/**
+ * 选择玩家是否手持锤子.
+ *
+ * @param playerId - 玩家ID.
+ * @returns 是否手持锤子选择器函数.
+ */
+export function selectIsHoldingHammer(playerId: string): (state: SharedState) => boolean {
+	return createSelector(
+		selectHeldItem(playerId),
+		(heldItem): boolean => heldItem?.itemType === ItemType.Hammer,
 	);
 }
 

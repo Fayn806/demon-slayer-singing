@@ -218,7 +218,7 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 		for (const [expansionId, unlocked] of pairs(expansions)) {
 			if (unlocked) {
 				this.setExpansionExpanded(expansionId, true);
-				this.logger.Verbose(
+				this.logger.Info(
 					`Player ${this.attributes.playerId} unlocked expansion: ${expansionId}`,
 				);
 			}

@@ -9,7 +9,7 @@ export interface IslandState {
 	equipped: Array<PlayerInventoryItem>;
 	expands: Record<string, boolean>;
 	/** 玩家手持物品. */
-	heldItem?: PlayerInventoryItem;
+	heldIndex?: number;
 	/** 玩家背包物品. */
 	inventory: Array<PlayerInventoryItem>;
 	placed: Array<PlayerPlacedItem>;

@@ -9,7 +9,7 @@ import type {
 	PlayerInventoryItem,
 	PlayerPlacedItem,
 } from "shared/types";
-import { EggStatus } from "shared/types";
+import { EggStatus, ItemType } from "shared/types";
 
 import {
 	ConveyorSpeedMode,
@@ -58,9 +58,15 @@ function createInitialIslandState(): IslandState {
 			conveyor: [],
 			missed: [],
 		},
-		equipped: [],
+		equipped: [
+			{
+				instanceId: "defaultHammer",
+				itemType: ItemType.Hammer,
+				placeRange: 0,
+			},
+		],
 		expands: {},
-		heldItem: undefined,
+		heldIndex: 0,
 		inventory: [],
 		placed: [],
 	};
@@ -105,11 +111,31 @@ function hasEquippedSlot(islandState: IslandState): boolean {
  * @returns 更新后的岛屿状态.
  */
 function removeItemFromAllLocations(islandState: IslandState, instanceId: string): IslandState {
+	const newEquipped = islandState.equipped.filter(item => item.instanceId !== instanceId);
+	let newHeldIndex = islandState.heldIndex;
+
+	// 如果移除的物品是当前手持的物品，清除heldIndex
+	if (
+		islandState.heldIndex !== undefined &&
+		islandState.equipped[islandState.heldIndex]?.instanceId === instanceId
+	) {
+		newHeldIndex = undefined;
+	} else if (
+		islandState.heldIndex !== undefined &&
+		newEquipped.size() !== islandState.equipped.size()
+	) {
+		// 如果装备数组发生变化，需要调整heldIndex
+		const heldItem = islandState.equipped[islandState.heldIndex];
+		if (heldItem) {
+			const newIndex = newEquipped.findIndex(item => item.instanceId === heldItem.instanceId);
+			newHeldIndex = newIndex !== -1 ? newIndex : undefined;
+		}
+	}
+
 	return {
 		...islandState,
-		equipped: islandState.equipped.filter(item => item.instanceId !== instanceId),
-		heldItem:
-			islandState.heldItem?.instanceId === instanceId ? undefined : islandState.heldItem,
+		equipped: newEquipped,
+		heldIndex: newHeldIndex,
 		inventory: islandState.inventory.filter(item => item.instanceId !== instanceId),
 	};
 }
@@ -218,14 +244,24 @@ export const playersSlice = createProducer({} as PlayersState, {
 
 		const currentIslandState = getCurrentIslandState(playerState);
 
-		if (!currentIslandState.heldItem) {
+		if (currentIslandState.heldIndex === undefined) {
 			return state;
 		}
 
+		const heldItem = currentIslandState.equipped[currentIslandState.heldIndex];
+		if (!heldItem) {
+			return state;
+		}
+
+		// 从装备槽移除并放入背包
+		const newEquipped = [...currentIslandState.equipped];
+		newEquipped.unorderedRemove(currentIslandState.heldIndex);
+
 		const updatedIslandState = {
 			...currentIslandState,
-			heldItem: undefined,
-			inventory: [...currentIslandState.inventory, currentIslandState.heldItem],
+			equipped: newEquipped,
+			heldIndex: undefined,
+			inventory: [...currentIslandState.inventory, heldItem],
 		};
 
 		return {
@@ -732,24 +768,53 @@ export const playersSlice = createProducer({} as PlayersState, {
 
 		const currentIslandState = getCurrentIslandState(playerState);
 
-		// 查找物品在背包或装备槽中
+		// 查找物品在装备槽中的索引
+		const equippedIndex = currentIslandState.equipped.findIndex(
+			item => item.instanceId === itemInstanceId,
+		);
+
+		if (equippedIndex !== -1) {
+			// 物品在装备槽中，直接设置heldIndex
+			const updatedIslandState = {
+				...currentIslandState,
+				heldIndex: equippedIndex,
+			};
+
+			return {
+				...state,
+				[playerId]: {
+					...playerState,
+					islands: {
+						...playerState.islands,
+						[playerState.plot.islandId]: updatedIslandState,
+					},
+				},
+			};
+		}
+
+		// 查找物品在背包中
 		const inventoryItem = currentIslandState.inventory.find(
 			item => item.instanceId === itemInstanceId,
 		);
-		const equippedItem = currentIslandState.equipped.find(
-			item => item.instanceId === itemInstanceId,
-		);
-		const targetItem = inventoryItem ?? equippedItem;
 
-		if (!targetItem) {
+		if (!inventoryItem) {
 			return state;
 		}
 
-		// 先移除所有位置的同一物品，确保唯一性
-		const cleanedIslandState = removeItemFromAllLocations(currentIslandState, itemInstanceId);
+		// 检查装备槽是否有空位
+		if (!hasEquippedSlot(currentIslandState)) {
+			return state;
+		}
+
+		// 从背包移除并添加到装备槽
 		const updatedIslandState = {
-			...cleanedIslandState,
-			heldItem: targetItem,
+			...currentIslandState,
+			equipped: [...currentIslandState.equipped, inventoryItem],
+			// 新添加的物品索引
+			heldIndex: currentIslandState.equipped.size(),
+			inventory: currentIslandState.inventory.filter(
+				item => item.instanceId !== itemInstanceId,
+			),
 		};
 
 		return {
@@ -865,7 +930,7 @@ export const playersSlice = createProducer({} as PlayersState, {
 	},
 
 	/**
-	 * 切换手持物品（从装备槽或背包中选择）.
+	 * 切换手持物品（仅在装备槽中的物品之间切换）.
 	 *
 	 * @param state - 当前状态.
 	 * @param playerId - 玩家ID.
@@ -880,12 +945,22 @@ export const playersSlice = createProducer({} as PlayersState, {
 
 		const currentIslandState = getCurrentIslandState(playerState);
 
-		// 如果当前已手持此物品，则清除手持
-		if (currentIslandState.heldItem?.instanceId === itemInstanceId) {
+		// 查找物品在装备槽中的索引
+		const equippedIndex = currentIslandState.equipped.findIndex(
+			item => item.instanceId === itemInstanceId,
+		);
+
+		// 只有装备槽中的物品才能被设为手持
+		if (equippedIndex === -1) {
+			return state;
+		}
+
+		// 检查当前是否手持此物品
+		if (currentIslandState.heldIndex === equippedIndex) {
+			// 如果当前已手持此物品，则取消手持
 			const updatedIslandState = {
 				...currentIslandState,
-				heldItem: undefined,
-				inventory: [...currentIslandState.inventory, currentIslandState.heldItem],
+				heldIndex: undefined,
 			};
 
 			return {
@@ -900,24 +975,10 @@ export const playersSlice = createProducer({} as PlayersState, {
 			};
 		}
 
-		// 否则设置为手持物品
-		const inventoryItem = currentIslandState.inventory.find(
-			item => item.instanceId === itemInstanceId,
-		);
-		const equippedItem = currentIslandState.equipped.find(
-			item => item.instanceId === itemInstanceId,
-		);
-		const targetItem = inventoryItem ?? equippedItem;
-
-		if (!targetItem) {
-			return state;
-		}
-
-		// 先移除所有位置的同一物品，确保唯一性
-		const cleanedIslandState = removeItemFromAllLocations(currentIslandState, itemInstanceId);
+		// 设置为手持物品
 		const updatedIslandState = {
-			...cleanedIslandState,
-			heldItem: targetItem,
+			...currentIslandState,
+			heldIndex: equippedIndex,
 		};
 
 		return {
