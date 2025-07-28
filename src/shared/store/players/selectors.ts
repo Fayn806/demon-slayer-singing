@@ -37,16 +37,17 @@ export function selectPlayerState(
  *
  * @returns 所有玩家地块状态选择器函数.
  */
-export function selectAllPlayerPlots(): (state: SharedState) => Array<PlayerPlotState> {
-	return (state: SharedState) => {
+export const selectAllPlayerPlots = createSelector(
+	(state: SharedState) => state.players,
+	players => {
 		const plots: Array<PlayerPlotState> = [];
-		for (const [_, player] of pairs(state.players)) {
+		for (const [_, player] of pairs(players)) {
 			plots.push(player.plot);
 		}
 
 		return plots;
-	};
-}
+	},
+);
 
 /**
  * 选择玩家地块状态.

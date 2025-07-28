@@ -10,16 +10,15 @@ import type { Components } from "@flamework/components";
 import type { OnStart } from "@flamework/core";
 import { Controller } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
-import { ReplicatedStorage, Workspace } from "@rbxts/services";
+import { ReplicatedStorage } from "@rbxts/services";
 
 import type { RootStore } from "client/store";
-import { selectLatestConveyorEgg, selectPlayerPlotIndex } from "shared/store/players/selectors";
+import { selectLatestConveyorEgg } from "shared/store/players/selectors";
 import type { PlayerPlotState } from "shared/store/players/types";
 import type { ConveyorEgg } from "shared/types";
 import type { EggModel } from "types/interfaces/components/egg";
 
-import type { PlotComponent } from "../../plot-component";
-import type { OnPlayerPlotLoaded } from "../../plot-controller";
+import type { OnPlayerPlotLoaded, PlotController } from "../../plot-controller";
 
 @Controller({})
 export class EggController implements OnStart, OnPlayerPlotLoaded {
@@ -27,6 +26,7 @@ export class EggController implements OnStart, OnPlayerPlotLoaded {
 		private readonly logger: Logger,
 		private readonly store: RootStore,
 		private readonly components: Components,
+		private readonly plotController: PlotController,
 	) {}
 
 	/** @ignore */
@@ -34,11 +34,7 @@ export class EggController implements OnStart, OnPlayerPlotLoaded {
 		this.logger.Info("EggController has started.");
 	}
 
-	public onPlayerPlotLoaded(
-		playerId: string,
-		_plot: PlayerPlotState,
-		_component: PlotComponent,
-	): void {
+	public onPlayerPlotLoaded(playerId: string, _plot: PlayerPlotState): void {
 		this.logger.Info(`Player ${playerId} plot loaded for EggController.`);
 		this.store.subscribe(selectLatestConveyorEgg(playerId), egg => {
 			this.logger.Verbose(`Latest conveyor egg for user ${playerId}: ${egg}`);
@@ -58,28 +54,16 @@ export class EggController implements OnStart, OnPlayerPlotLoaded {
 			return;
 		}
 
-		const playerIndex = this.store.getState(selectPlayerPlotIndex(playerId));
-		if (playerIndex === undefined) {
-			this.logger.Warn(`Player index not found for player ID: ${playerId}`);
-		}
-
-		const plotFolder = Workspace.Main.Plots.FindFirstChild(tostring(playerIndex));
-		if (!plotFolder) {
-			this.logger.Warn(`Plot folder not found for player index: ${playerIndex}`);
-			return;
-		}
-
-		const plotComponent = this.components.getComponent<PlotComponent>(plotFolder);
+		const plotComponent = this.plotController.getPlotComponent(playerId);
 		if (!plotComponent) {
-			this.logger.Warn(`Plot component not found for player index: ${playerIndex}`);
+			this.logger.Warn(`Plot component not found for player ID: ${playerId}`);
 			return;
 		}
 
 		const eggClone = eggModel.Clone();
 		const created = plotComponent.addEggModel(eggClone as EggModel, playerId, egg.instanceId);
 		if (!created) {
-			this.logger.Error(`Failed to add egg model ${egg.instanceId} to plot ${playerIndex}.`);
-			return;
+			this.logger.Error(`Failed to add egg model ${egg.instanceId} to plot.`);
 		}
 	}
 }

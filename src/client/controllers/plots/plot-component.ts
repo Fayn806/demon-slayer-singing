@@ -13,7 +13,7 @@ import { Tag } from "types/enum/tag";
 import type { EggModel } from "types/interfaces/components/egg";
 import type { PlotAttributes, PlotFolder } from "types/interfaces/components/plot";
 
-import type { EggComponent } from "./island/egg/components/egg";
+import type { ConveyorEggComponent } from "./island/egg/conveyor-egg-component";
 
 @Component({
 	refreshAttributes: $NODE_ENV === "development",
@@ -65,7 +65,7 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 			eggModel.SetAttribute("instanceId", eggInstanceId);
 			eggModel.SetAttribute("playerId", playerId);
 
-			const eggComponent = this.components.addComponent<EggComponent>(eggModel);
+			const eggComponent = this.components.addComponent<ConveyorEggComponent>(eggModel);
 			eggComponent.initialize(this);
 
 			this.logger.Verbose(

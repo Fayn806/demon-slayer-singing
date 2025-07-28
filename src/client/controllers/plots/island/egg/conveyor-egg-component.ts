@@ -10,13 +10,13 @@ import { selectConveyorEggById } from "shared/store/players/selectors";
 import { calculateEggProgress } from "shared/util/egg-util";
 import { Tag } from "types/enum/tag";
 
-import type { EggAttributes, EggModel } from "../../../../../../types/interfaces/components/egg";
+import type { EggAttributes, EggModel } from "../../../../../types/interfaces/components/egg";
 
 @Component({
 	refreshAttributes: $NODE_ENV === "development",
 	tag: Tag.Egg,
 })
-export class EggComponent extends BaseComponent<EggAttributes, EggModel> {
+export class ConveyorEggComponent extends BaseComponent<EggAttributes, EggModel> {
 	private readonly janitor = new Janitor();
 
 	private effectConnections: Array<RBXScriptConnection> = [];

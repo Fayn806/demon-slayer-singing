@@ -12,7 +12,7 @@ import { waitForPlotStructure } from "shared/util/plot-util";
 import type { PlotComponent } from "./plot-component";
 
 export interface OnPlayerPlotLoaded {
-	onPlayerPlotLoaded(playerId: string, plot: PlayerPlotState, component: PlotComponent): void;
+	onPlayerPlotLoaded(playerId: string, plot: PlayerPlotState): void;
 }
 
 @Controller({})
@@ -34,11 +34,14 @@ export class PlotController implements OnStart {
 			if (playerPlotState) {
 				this.initializePlot(playerId, playerPlotState);
 			} else {
-				this.logger.Warn(`No plot state found for player ${playerId}.`);
+				this.logger.Info(
+					`Plot state not yet available for player ${playerId}, will wait for sync.`,
+				);
 			}
 		}
 
-		store.subscribe(selectAllPlayerPlots(), plots => {
+		// 监听所有地块状态变化
+		store.subscribe(selectAllPlayerPlots, plots => {
 			for (const plot of plots) {
 				const { playerId } = plot;
 				if (!this.plotComponents.has(playerId)) {
@@ -47,6 +50,10 @@ export class PlotController implements OnStart {
 				}
 			}
 		});
+	}
+
+	public getPlotComponent(playerId: string): PlotComponent | undefined {
+		return this.plotComponents.get(playerId);
 	}
 
 	private initializePlot(playerId: string, plot: PlayerPlotState | undefined): void {
@@ -80,10 +87,10 @@ export class PlotController implements OnStart {
 					return;
 				}
 
-                this.plotComponents.set(playerId, component);
+				this.plotComponents.set(playerId, component);
 
 				for (const { event } of this.plotLoadEvents) {
-					event.onPlayerPlotLoaded(playerId, plot, component);
+					event.onPlayerPlotLoaded(playerId, plot);
 				}
 			})
 			.catch(err => {
