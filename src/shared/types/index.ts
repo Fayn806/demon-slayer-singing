@@ -8,22 +8,11 @@ export enum ItemType {
 	// 锤子
 	Hammer = "hammer",
 	HatchedPet = "hatched_pet",
-}
-
-/** 基础物品属性. */
-export interface BaseItemData {
-	/** 物品实例ID. */
-	instanceId: string;
-	/** 物品类型. */
-	itemType: ItemType;
-	/** 放置需要的范围. */
-	placeRange: number;
+	Pet = "pet",
 }
 
 /** 放置数据接口. */
 export interface PlacedData {
-	/** 岛屿ID. */
-	islandId: string;
 	/** 放置位置. */
 	location: CFrame;
 	/** 放置时间戳. */
@@ -47,19 +36,17 @@ export enum EggRarity {
 	Celestial = 8,
 }
 
-/** 蛋变异类型枚举. */
-export enum EggMutation {
-	Golden = "Golden",
-	Normal = "Normal",
-	Rainbow = "Rainbow",
-	Shiny = "Shiny",
+/** 蛋类型枚举. */
+export enum EggType {
+	Diamond = "diamond",
+	Golden = "golden",
+	Normal = "normal",
 }
 
-/** 蛋的状态枚举. */
-export enum EggStatus {
-	Hatched = "hatched",
-	Hatching = "hatching",
-	Unhatched = "unhatched",
+/** 蛋变异类型枚举. */
+export enum EggMutation {
+	Rainbow = "rainbow",
+	Shiny = "shiny",
 }
 
 /** 蛋的基础配置信息. */
@@ -88,61 +75,75 @@ export interface EggConfig {
 	};
 }
 
-/** 蛋实例基础接口. */
-export interface EggInstance extends BaseItemData {
-	/** 蛋类型. */
+export interface BaseEgg {
+	/** 蛋的唯一标识符. */
 	eggId: EggId;
+	/** 蛋的类型. */
+	type: EggType;
+}
+
+export interface ConveyorEgg extends BaseEgg {
+	/** 折扣价格（如果有活动）. */
+	discountedPrice?: number;
+	/** 实例ID. */
+	instanceId: string;
+	/** 物品类型. */
+	itemType: ItemType.Egg;
+	/** 移动开始时间戳. */
+	moveStartTime: number;
+	/** 生成时间戳. */
+	spawnTime: number;
+}
+
+export interface MissedEgg extends ConveyorEgg {
+	/** 过期时间戳. */
+	expireTime: number;
+	/** 是否已过期. */
+	isExpired: boolean;
+	/** 进入保留区时间戳. */
+	reserveTime: number;
+}
+
+export interface PlayerEgg extends BaseEgg {
+	/** 数量. */
+	count: number;
+	/** 物品类型. */
+	itemType: ItemType.Egg;
+}
+
+export interface PlacedEgg extends BaseEgg, PlacedData {
+	/** 孵化剩余时间（秒）. */
+	hatchLeftTime: number;
 	/** 幸运加成. */
 	luckBonus?: number;
 	/** 变异类型. */
 	mutations: Array<EggMutation>;
 	/** 大小幸运加成. */
 	sizeLuckBonus?: number;
-	/** 生成时间. */
-	spawnTime: number;
 }
-
-/** 玩家的蛋实例. */
-export interface PlayerEgg extends EggInstance {
-	/** 孵化剩余时间（秒）. */
-	hatchLeftTime: number;
-	/** 获得时间. */
-	obtainTime: number;
-	/** 蛋的状态. */
-	status: EggStatus;
-}
-
-/** 传送带上的蛋. */
-export interface ConveyorEgg extends EggInstance {
-	/** 折扣价格（如果有活动）. */
-	discountedPrice?: number;
-	/** 移动开始时间. */
-	moveStartTime: number;
-}
-
-/** 错过的蛋. */
-export interface MissedEgg extends ConveyorEgg {
-	/** 过期时间. */
-	expireTime: number;
-	/** 是否已过期. */
-	isExpired: boolean;
-	/** 进入保留区时间. */
-	reserveTime: number;
-}
-
-// ==================== 宠物系统 ====================
 
 /** 玩家的蛋孵化后宠物实例. */
-export interface PlayerPet extends EggInstance {
+export interface PlayerPet extends PlacedEgg {
 	/** 孵化时间. */
 	hatchTime: number;
+	/** 宠物ID. */
+	instanceId: string;
+	/** 物品类型. */
+	itemType: ItemType.Pet;
 	/** 宠物ID. */
 	petId: string;
 	/** 总收益. */
 	totalEarnings: number;
 }
 
-// ==================== 加成道具系统 ====================
+export interface PlacedPet extends PlacedData, PlayerPet {
+	/** 已领取收益. */
+	claimedEarnings: number;
+	/** 当前收益. */
+	currentEarnings: number;
+	/** 收益类型. */
+	earningsType: "coins" | "gems";
+}
 
 /** 加成道具类型枚举. */
 export enum BoosterType {
@@ -154,54 +155,39 @@ export enum BoosterType {
 }
 
 /** 玩家的加成道具. */
-export interface PlayerBooster extends BaseItemData {
+export interface PlayerBooster {
 	/** 加成类型. */
 	boosterType: BoosterType;
-	/** 剩余耐久度. */
-	durability?: number;
-	/** 是否激活. */
-	isActive: boolean;
-	/** 最大耐久度. */
-	maxDurability?: number;
-	/** 加成倍率. */
-	multiplier: number;
-	/** 影响范围 (格子数). */
-	range: number;
-}
-
-// ==================== 已放置物品系统 ====================
-
-/** 玩家放置的蛋. */
-export interface PlayerPlacedEgg extends PlayerEgg {
-	/** 放置数据. */
-	placedData: PlacedData;
-}
-
-/** 玩家放置的宠物. */
-export interface PlayerPlacedPet extends PlayerPet {
-	/** 已领取收益. */
-	claimedEarnings: number;
-	/** 当前收益. */
-	currentEarnings: number;
-	/** 收益类型. */
-	earningsType: "coins" | "gems";
-	/** 放置数据. */
-	placedData: PlacedData;
+	/** 道具ID. */
+	instanceId: string;
+	/** 物品类型. */
+	itemType: ItemType.Booster;
 }
 
 /** 玩家放置的加成道具. */
-export interface PlayerPlacedBooster extends PlayerBooster {
+export interface PlacedBooster extends PlayerBooster {
+	/** 物品类型. */
+	itemType: ItemType.Booster;
 	/** 放置数据. */
 	placedData: PlacedData;
+}
+
+export interface PlayerHammer {
+	/** 锤子ID. */
+	hammerId: string;
+	/** 物品类型. */
+	itemType: ItemType.Hammer;
+	/** 锤子使用次数. */
+	uses: number;
 }
 
 // ==================== 联合类型定义 ====================
 
 /** 玩家放置的物品联合类型. */
-export type PlayerPlacedItem = PlayerPlacedBooster | PlayerPlacedEgg | PlayerPlacedPet;
+export type PlayerPlacedItem = PlacedBooster | PlacedEgg | PlacedPet;
 
 /** 玩家背包物品联合类型. */
-export type PlayerInventoryItem = BaseItemData | PlayerBooster | PlayerEgg | PlayerPet;
+export type PlayerInventoryItem = PlayerBooster | PlayerEgg | PlayerHammer | PlayerPet;
 
 /** 传送带配置接口. */
 export interface ConveyorConfig {

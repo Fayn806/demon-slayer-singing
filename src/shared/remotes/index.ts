@@ -1,9 +1,9 @@
 import { createRemotes } from "@rbxts/remo";
 
-import { storeRemote } from "./namespaces";
-import { mtxRemote } from "./namespaces/mtx";
+import { mtxRemote, plotRemote, storeRemote } from "./namespaces";
 
 export const remotes = createRemotes({
 	mtx: mtxRemote,
+	plot: plotRemote,
 	store: storeRemote,
 });

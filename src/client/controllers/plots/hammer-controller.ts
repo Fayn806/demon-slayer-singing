@@ -4,6 +4,7 @@ import { Players, RunService, Workspace } from "@rbxts/services";
 
 import { USER_ID } from "client/constants";
 import type { RootStore } from "client/store";
+import { remotes } from "shared/remotes";
 import { selectIsHoldingHammer, selectPlayerPlotIndex } from "shared/store/players/selectors";
 import type { PlayerPlotState } from "shared/store/players/types";
 
@@ -273,6 +274,19 @@ export class HammerController implements OnPlayerPlotLoaded {
 	private handleExpandItemClick(item: Model): void {
 		this.logger.Info(`Demolishing expand item ${item.Name}`);
 		// 实现拆除逻辑：移除物品、返还资源等
+		remotes.plot.expand
+			.request(item.Name)
+			.andThen(result => {
+				if (result === true) {
+					this.logger.Info(`Successfully demolished expand item ${item.Name}`);
+					// 在这里处理成功拆除后的逻辑
+				} else {
+					this.logger.Warn(`Failed to demolish expand item ${item.Name}`);
+				}
+			})
+			.catch(err => {
+				this.logger.Error(tostring(err));
+			});
 	}
 
 	/**

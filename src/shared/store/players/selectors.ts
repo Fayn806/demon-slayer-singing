@@ -330,21 +330,6 @@ export function selectInventoryItems(
 }
 
 /**
- * 选择玩家当前岛屿的装备物品.
- *
- * @param playerId - 玩家ID.
- * @returns 装备物品选择器函数.
- */
-export function selectEquippedItems(
-	playerId: string,
-): (state: SharedState) => Array<PlayerInventoryItem> {
-	return createSelector(
-		selectCurrentIslandState(playerId),
-		(islandState): Array<PlayerInventoryItem> => islandState?.equipped ?? [],
-	);
-}
-
-/**
  * 选择玩家当前岛屿的手持物品.
  *
  * @param playerId - 玩家ID.
@@ -355,13 +340,7 @@ export function selectHeldItem(
 ): (state: SharedState) => PlayerInventoryItem | undefined {
 	return createSelector(
 		selectCurrentIslandState(playerId),
-		(islandState): PlayerInventoryItem | undefined => {
-			if (islandState?.heldIndex === undefined) {
-				return undefined;
-			}
-
-			return islandState.equipped[islandState.heldIndex];
-		},
+		(islandState): PlayerInventoryItem | undefined => islandState?.heldItem,
 	);
 }
 
@@ -407,26 +386,14 @@ export function selectInventoryItemById(
 	return createSelector(
 		selectInventoryItems(playerId),
 		(inventoryItems): PlayerInventoryItem | undefined => {
-			return inventoryItems.find(item => item.instanceId === itemInstanceId);
-		},
-	);
-}
+			return inventoryItems.find(item => {
+				// 只有某些类型的物品有instanceId属性
+				if ("instanceId" in item) {
+					return item.instanceId === itemInstanceId;
+				}
 
-/**
- * 根据实例ID查找装备物品.
- *
- * @param playerId - 玩家ID.
- * @param itemInstanceId - 物品实例ID.
- * @returns 装备物品选择器函数.
- */
-export function selectEquippedItemById(
-	playerId: string,
-	itemInstanceId: string,
-): (state: SharedState) => PlayerInventoryItem | undefined {
-	return createSelector(
-		selectEquippedItems(playerId),
-		(equippedItems): PlayerInventoryItem | undefined => {
-			return equippedItems.find(item => item.instanceId === itemInstanceId);
+				return false;
+			});
 		},
 	);
 }
@@ -445,7 +412,14 @@ export function selectPlacedItemById(
 	return createSelector(
 		selectPlacedItems(playerId),
 		(placedItems): PlayerPlacedItem | undefined => {
-			return placedItems.find(item => item.instanceId === itemInstanceId);
+			return placedItems.find(item => {
+				// 只有某些类型的物品有instanceId属性
+				if ("instanceId" in item) {
+					return item.instanceId === itemInstanceId;
+				}
+
+				return false;
+			});
 		},
 	);
 }
@@ -557,7 +531,6 @@ export function selectLastEggGenerationTime(playerId: string): (state: SharedSta
  * @returns 物品统计信息选择器函数.
  */
 export function selectItemStats(playerId: string): (state: SharedState) => {
-	equippedCount: number;
 	hasHeldItem: boolean;
 	inventoryCount: number;
 	placedCount: number;
@@ -565,35 +538,17 @@ export function selectItemStats(playerId: string): (state: SharedState) => {
 } {
 	return createSelector(
 		selectInventoryItems(playerId),
-		selectEquippedItems(playerId),
 		selectPlacedItems(playerId),
 		selectHeldItem(playerId),
-		(inventoryItems, equippedItems, placedItems, heldItem) => {
+		(inventoryItems, placedItems, heldItem) => {
 			return {
-				equippedCount: equippedItems.size(),
 				hasHeldItem: heldItem !== undefined,
 				inventoryCount: inventoryItems.size(),
 				placedCount: placedItems.size(),
 				totalItems:
-					inventoryItems.size() +
-					equippedItems.size() +
-					placedItems.size() +
-					(heldItem ? 1 : 0),
+					inventoryItems.size() + placedItems.size() + (heldItem !== undefined ? 1 : 0),
 			};
 		},
-	);
-}
-
-/**
- * 检查装备槽是否有空位.
- *
- * @param playerId - 玩家ID.
- * @returns 装备槽空位检查选择器函数.
- */
-export function selectHasEquippedSlot(playerId: string): (state: SharedState) => boolean {
-	return createSelector(
-		selectEquippedItems(playerId),
-		(equippedItems): boolean => equippedItems.size() < 6,
 	);
 }
 
@@ -616,7 +571,6 @@ export function selectPlayerData(playerId: string): (state: SharedState) =>
 			};
 			islands: PlayerIslandState;
 			itemStats: {
-				equippedCount: number;
 				hasHeldItem: boolean;
 				inventoryCount: number;
 				placedCount: number;

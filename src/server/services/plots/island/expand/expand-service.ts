@@ -1,14 +1,27 @@
-import { Service } from "@flamework/core";
+import { type OnStart, Service } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
 
 import type { PlayerEntity } from "server/services/player/player-entity";
+import type { PlayerService } from "server/services/player/player-service";
 import { store } from "server/store";
+import { remotes } from "shared/remotes";
 
 import type { OnPlayerIslandLoad } from "../island-service";
 
 @Service({})
-export class ExpandService implements OnPlayerIslandLoad {
-	constructor(private readonly logger: Logger) {}
+export class ExpandService implements OnStart, OnPlayerIslandLoad {
+	constructor(
+		private readonly logger: Logger,
+		private readonly playerService: PlayerService,
+	) {}
+
+	public onStart(): void {
+		remotes.plot.expand.onRequest(
+			this.playerService.withPlayerEntity((playerEntity, expansionId) =>
+				this.expandPlot(playerEntity, expansionId),
+			),
+		);
+	}
 
 	public onPlayerIslandLoad(playerEntity: PlayerEntity): void {
 		const { userId } = playerEntity;

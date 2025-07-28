@@ -1,19 +1,21 @@
-import { Service } from "@flamework/core";
+import { type OnStart, Service } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
 import { Workspace } from "@rbxts/services";
 
 import type { PlayerEntity } from "server/services/player/player-entity";
+import type { PlayerService } from "server/services/player/player-service";
 import { store } from "server/store";
 import { CONVEYOR_CONSTANTS, LOOP_DURATION } from "shared/constants/game";
+import { remotes } from "shared/remotes";
 import type { IslandState, PlayerState } from "shared/store/players/types";
 import type { ConveyorEgg, EggId, MissedEgg } from "shared/types";
-import { ItemType } from "shared/types";
+import { EggType, ItemType } from "shared/types";
 import { isEggMissed } from "shared/util/egg-util";
 
 import type { OnPlayerIslandLoad } from "../island-service";
 
 @Service({})
-export class EggService implements OnPlayerIslandLoad {
+export class EggService implements OnStart, OnPlayerIslandLoad {
 	/** 基础蛋生成间隔（秒），会根据传送带速度调整. */
 	private readonly baseEggGenerationInterval = 3;
 	/** 过期蛋清理间隔（秒）. */
@@ -21,7 +23,18 @@ export class EggService implements OnPlayerIslandLoad {
 	private readonly playersEggGenerating = new Map<PlayerEntity, thread>();
 	private readonly playersLastCleanup = new Map<string, number>();
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly playerService: PlayerService,
+	) {}
+
+	public onStart(): void {
+		remotes.plot.buyConveyorEgg.onRequest(
+			this.playerService.withPlayerEntity((playerEntity, eggInstanceId) => {
+				return this.playerBuyConveyorEgg(playerEntity, eggInstanceId);
+			}),
+		);
+	}
 
 	public onPlayerIslandLoad(playerEntity: PlayerEntity): void {
 		const { userId } = playerEntity;
@@ -287,12 +300,9 @@ export class EggService implements OnPlayerIslandLoad {
 			eggId,
 			instanceId,
 			itemType: ItemType.Egg,
-			luckBonus: math.random(1, 10),
 			moveStartTime: currentTime + CONVEYOR_CONSTANTS.EGG_MOVE_DELAY,
-			mutations: [],
-			placeRange: 5,
-			sizeLuckBonus: math.random(1, 5),
 			spawnTime: currentTime,
+			type: EggType.Normal,
 		};
 
 		// 应用自定义属性
@@ -454,5 +464,31 @@ export class EggService implements OnPlayerIslandLoad {
 		store.spawnEggOnConveyor(userId, conveyorEgg);
 
 		this.logger.Info(`Generated egg ${conveyorEgg.instanceId} for player ${userId}.`);
+	}
+
+	private playerBuyConveyorEgg(playerEntity: PlayerEntity, eggInstanceId: string): boolean {
+		const { userId } = playerEntity;
+		const currentIslandState = this.getCurrentIslandState(userId);
+		if (!currentIslandState) {
+			this.logger.Warn(`Player ${userId} has no current island state.`);
+			return false;
+		}
+
+		const conveyorEgg = this.findConveyorEgg(playerEntity, eggInstanceId);
+		if (!conveyorEgg) {
+			this.logger.Warn(`Egg ${eggInstanceId} not found on conveyor for player ${userId}.`);
+			return false;
+		}
+
+		// 检查蛋是否已经错过
+		const currentTime = Workspace.GetServerTimeNow();
+		const speedHistory = playerEntity.getPlayerState()?.conveyor.speedModeHistory ?? [];
+		if (isEggMissed(conveyorEgg.moveStartTime, currentTime, speedHistory)) {
+			this.logger.Warn(`Egg ${eggInstanceId} has already been missed for player ${userId}.`);
+			return false;
+		}
+
+		store.pickupConveyorEgg(userId, conveyorEgg.instanceId);
+		return true;
 	}
 }

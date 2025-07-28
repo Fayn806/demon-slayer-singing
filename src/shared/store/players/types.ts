@@ -5,11 +5,9 @@ export interface IslandState {
 		conveyor: Array<ConveyorEgg>;
 		missed: Array<MissedEgg>;
 	};
-	/** 玩家已装备的物品. */
-	equipped: Array<PlayerInventoryItem>;
 	expands: Record<string, boolean>;
 	/** 玩家手持物品. */
-	heldIndex?: number;
+	heldItem?: PlayerInventoryItem;
 	/** 玩家背包物品. */
 	inventory: Array<PlayerInventoryItem>;
 	placed: Array<PlayerPlacedItem>;

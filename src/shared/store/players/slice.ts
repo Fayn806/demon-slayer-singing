@@ -9,7 +9,7 @@ import type {
 	PlayerInventoryItem,
 	PlayerPlacedItem,
 } from "shared/types";
-import { EggStatus, ItemType } from "shared/types";
+import { ItemType } from "shared/types";
 
 import {
 	ConveyorSpeedMode,
@@ -58,16 +58,14 @@ function createInitialIslandState(): IslandState {
 			conveyor: [],
 			missed: [],
 		},
-		equipped: [
+		expands: {},
+		inventory: [
 			{
-				instanceId: "defaultHammer",
+				hammerId: "hammer1",
 				itemType: ItemType.Hammer,
-				placeRange: 0,
+				uses: 0,
 			},
 		],
-		expands: {},
-		heldIndex: 0,
-		inventory: [],
 		placed: [],
 	};
 }
@@ -94,89 +92,83 @@ function getCurrentIslandState(playerState: PlayerState): IslandState {
 }
 
 /**
- * 检查装备槽是否有空位（假设最大装备数量为6）.
+ * 检查物品是否可以放回背包（只有宠物可以放回）.
  *
- * @param islandState - 岛屿状态.
- * @returns 是否有空位.
+ * @param item - 物品.
+ * @returns 是否可以放回背包.
  */
-function hasEquippedSlot(islandState: IslandState): boolean {
-	return islandState.equipped.size() < 6;
+function canReturnToInventory(item: PlayerInventoryItem): boolean {
+	return item.itemType === ItemType.Pet;
 }
 
 /**
- * 从当前岛屿的所有位置移除指定物品，确保唯一性.
+ * 将蛋添加到背包，处理叠加逻辑.
  *
- * @param islandState - 岛屿状态.
- * @param instanceId - 物品实例ID.
- * @returns 更新后的岛屿状态.
+ * @param inventory - 当前背包物品列表.
+ * @param newEgg - 要添加的蛋.
+ * @returns 更新后的背包物品列表.
  */
-function removeItemFromAllLocations(islandState: IslandState, instanceId: string): IslandState {
-	const newEquipped = islandState.equipped.filter(item => item.instanceId !== instanceId);
-	let newHeldIndex = islandState.heldIndex;
+function addEggToInventory(
+	inventory: Array<PlayerInventoryItem>,
+	newEgg: PlayerEgg,
+): Array<PlayerInventoryItem> {
+	const existingEggIndex = inventory.findIndex(items => {
+		return (
+			items.itemType === ItemType.Egg &&
+			items.eggId === newEgg.eggId &&
+			items.type === newEgg.type
+		);
+	});
 
-	// 如果移除的物品是当前手持的物品，清除heldIndex
-	if (
-		islandState.heldIndex !== undefined &&
-		islandState.equipped[islandState.heldIndex]?.instanceId === instanceId
-	) {
-		newHeldIndex = undefined;
-	} else if (
-		islandState.heldIndex !== undefined &&
-		newEquipped.size() !== islandState.equipped.size()
-	) {
-		// 如果装备数组发生变化，需要调整heldIndex
-		const heldItem = islandState.equipped[islandState.heldIndex];
-		if (heldItem) {
-			const newIndex = newEquipped.findIndex(item => item.instanceId === heldItem.instanceId);
-			newHeldIndex = newIndex !== -1 ? newIndex : undefined;
-		}
+	if (existingEggIndex !== -1) {
+		return inventory.map((item, index) => {
+			if (index === existingEggIndex) {
+				return {
+					...item,
+					count: (item as PlayerEgg).count + 1,
+				};
+			}
+
+			return item;
+		});
 	}
 
-	return {
-		...islandState,
-		equipped: newEquipped,
-		heldIndex: newHeldIndex,
-		inventory: islandState.inventory.filter(item => item.instanceId !== instanceId),
-	};
+	return [...inventory, newEgg];
 }
 
 export const playersSlice = createProducer({} as PlayersState, {
 	// ==================== 物品管理 ====================
 
 	/**
-	 * 添加物品到当前岛屿背包（确保唯一性）.
+	 * 添加物品到背包（蛋类型会叠加，其他类型直接添加）.
 	 *
 	 * @param state - 当前状态.
 	 * @param playerId - 玩家ID.
 	 * @param item - 物品对象.
 	 * @returns 更新后的状态.
 	 */
-	addToInventory: (state, playerId: string, item: PlayerInventoryItem): PlayersState => {
+	addItemToInventory: (state, playerId: string, item: PlayerInventoryItem): PlayersState => {
 		const playerState = state[playerId];
 		if (!playerState) {
 			return state;
 		}
 
 		const currentIslandState = getCurrentIslandState(playerState);
+		let newInventory: Array<PlayerInventoryItem>;
 
-		// 先移除该岛屿所有位置的同一物品，确保唯一性
-		const cleanedIslandState = removeItemFromAllLocations(currentIslandState, item.instanceId);
-
-		// 根据装备槽空位情况决定放置位置
-		let updatedIslandState: IslandState;
-		if (hasEquippedSlot(cleanedIslandState)) {
-			// 如果有装备槽空位，优先装备
-			updatedIslandState = {
-				...cleanedIslandState,
-				equipped: [...cleanedIslandState.equipped, item],
-			};
+		// 如果是蛋类型，使用辅助函数处理叠加
+		if (item.itemType === ItemType.Egg) {
+			const eggItem = item;
+			newInventory = addEggToInventory(currentIslandState.inventory, eggItem);
 		} else {
-			// 否则放入背包
-			updatedIslandState = {
-				...cleanedIslandState,
-				inventory: [...cleanedIslandState.inventory, item],
-			};
+			// 非蛋类型直接添加
+			newInventory = [...currentIslandState.inventory, item];
 		}
+
+		const updatedIslandState = {
+			...currentIslandState,
+			inventory: newInventory,
+		};
 
 		return {
 			...state,
@@ -215,108 +207,6 @@ export const playersSlice = createProducer({} as PlayersState, {
 				...currentIslandState.eggs,
 				missed: newMissedEggs,
 			},
-		};
-
-		return {
-			...state,
-			[playerId]: {
-				...playerState,
-				islands: {
-					...playerState.islands,
-					[playerState.plot.islandId]: updatedIslandState,
-				},
-			},
-		};
-	},
-
-	/**
-	 * 清除手持物品（放回背包）.
-	 *
-	 * @param state - 当前状态.
-	 * @param playerId - 玩家ID.
-	 * @returns 更新后的状态.
-	 */
-	clearHeldItem: (state, playerId: string): PlayersState => {
-		const playerState = state[playerId];
-		if (!playerState) {
-			return state;
-		}
-
-		const currentIslandState = getCurrentIslandState(playerState);
-
-		if (currentIslandState.heldIndex === undefined) {
-			return state;
-		}
-
-		const heldItem = currentIslandState.equipped[currentIslandState.heldIndex];
-		if (!heldItem) {
-			return state;
-		}
-
-		// 从装备槽移除并放入背包
-		const newEquipped = [...currentIslandState.equipped];
-		newEquipped.unorderedRemove(currentIslandState.heldIndex);
-
-		const updatedIslandState = {
-			...currentIslandState,
-			equipped: newEquipped,
-			heldIndex: undefined,
-			inventory: [...currentIslandState.inventory, heldItem],
-		};
-
-		return {
-			...state,
-			[playerId]: {
-				...playerState,
-				islands: {
-					...playerState.islands,
-					[playerState.plot.islandId]: updatedIslandState,
-				},
-			},
-		};
-	},
-
-	/**
-	 * 装备物品（从背包到装备槽）.
-	 *
-	 * @param state - 当前状态.
-	 * @param playerId - 玩家ID.
-	 * @param itemInstanceId - 物品实例ID.
-	 * @returns 更新后的状态.
-	 */
-	equipItem: (state, playerId: string, itemInstanceId: string): PlayersState => {
-		const playerState = state[playerId];
-		if (!playerState) {
-			return state;
-		}
-
-		const currentIslandState = getCurrentIslandState(playerState);
-
-		// 检查是否有装备槽位
-		if (!hasEquippedSlot(currentIslandState)) {
-			return state;
-		}
-
-		// 查找物品在背包中
-		const itemIndex = currentIslandState.inventory.findIndex(
-			item => item.instanceId === itemInstanceId,
-		);
-		if (itemIndex === -1) {
-			return state;
-		}
-
-		const item = currentIslandState.inventory[itemIndex];
-		if (!item) {
-			return state;
-		}
-
-		const newInventory = [...currentIslandState.inventory];
-		newInventory.unorderedRemove(itemIndex);
-
-		const updatedIslandState = {
-			...currentIslandState,
-			equipped: [...currentIslandState.equipped, item],
-			inventory: newInventory,
 		};
 
 		return {
@@ -403,7 +293,7 @@ export const playersSlice = createProducer({} as PlayersState, {
 	},
 
 	/**
-	 * 捡起当前岛屿传送带上的蛋 - 优先装备，其次背包.
+	 * 捡起传送带上的蛋并添加到背包.
 	 *
 	 * @param state - 当前状态.
 	 * @param playerId - 玩家ID.
@@ -429,37 +319,28 @@ export const playersSlice = createProducer({} as PlayersState, {
 			return state;
 		}
 
+		// 从传送带移除蛋
 		const newConveyorEggs = [...currentIslandState.eggs.conveyor];
 		newConveyorEggs.unorderedRemove(eggIndex);
 
+		// 转换为玩家蛋
 		const playerEgg: PlayerEgg = {
+			count: 1,
 			eggId: conveyorEgg.eggId,
-			hatchLeftTime: 0,
-			instanceId: conveyorEgg.instanceId,
-			itemType: conveyorEgg.itemType,
-			luckBonus: conveyorEgg.luckBonus,
-			mutations: conveyorEgg.mutations,
-			obtainTime: Workspace.GetServerTimeNow(),
-			placeRange: conveyorEgg.placeRange,
-			sizeLuckBonus: conveyorEgg.sizeLuckBonus,
-			spawnTime: conveyorEgg.spawnTime,
-			status: EggStatus.Unhatched,
+			itemType: ItemType.Egg,
+			type: conveyorEgg.type,
 		};
 
-		// 获得蛋时，如果装备槽有空位直接装备，否则放入背包
-		const hasSlot = hasEquippedSlot(currentIslandState);
+		// 使用辅助函数处理背包叠加逻辑
+		const newInventory = addEggToInventory(currentIslandState.inventory, playerEgg);
+
 		const updatedIslandState = {
 			...currentIslandState,
 			eggs: {
 				...currentIslandState.eggs,
 				conveyor: newConveyorEggs,
 			},
-			equipped: hasSlot
-				? [...currentIslandState.equipped, playerEgg]
-				: currentIslandState.equipped,
-			inventory: hasSlot
-				? currentIslandState.inventory
-				: [...currentIslandState.inventory, playerEgg],
+			inventory: newInventory,
 		};
 
 		return {
@@ -475,7 +356,7 @@ export const playersSlice = createProducer({} as PlayersState, {
 	},
 
 	/**
-	 * 捡起错过的蛋 - 优先装备，其次背包.
+	 * 捡起错过的蛋并添加到背包.
 	 *
 	 * @param state - 当前状态.
 	 * @param playerId - 玩家ID.
@@ -501,37 +382,28 @@ export const playersSlice = createProducer({} as PlayersState, {
 			return state;
 		}
 
+		// 从错过区域移除蛋
 		const newMissedEggs = [...currentIslandState.eggs.missed];
 		newMissedEggs.unorderedRemove(eggIndex);
 
+		// 转换为玩家蛋
 		const playerEgg: PlayerEgg = {
+			count: 1,
 			eggId: missedEgg.eggId,
-			hatchLeftTime: 0,
-			instanceId: missedEgg.instanceId,
-			itemType: missedEgg.itemType,
-			luckBonus: missedEgg.luckBonus,
-			mutations: missedEgg.mutations,
-			obtainTime: Workspace.GetServerTimeNow(),
-			placeRange: missedEgg.placeRange,
-			sizeLuckBonus: missedEgg.sizeLuckBonus,
-			spawnTime: missedEgg.spawnTime,
-			status: EggStatus.Unhatched,
+			itemType: ItemType.Egg,
+			type: missedEgg.type,
 		};
 
-		// 获得蛋时，如果装备槽有空位直接装备，否则放入背包
-		const hasSlot = hasEquippedSlot(currentIslandState);
+		// 使用辅助函数处理背包叠加逻辑
+		const newInventory = addEggToInventory(currentIslandState.inventory, playerEgg);
+
 		const updatedIslandState = {
 			...currentIslandState,
 			eggs: {
 				...currentIslandState.eggs,
 				missed: newMissedEggs,
 			},
-			equipped: hasSlot
-				? [...currentIslandState.equipped, playerEgg]
-				: currentIslandState.equipped,
-			inventory: hasSlot
-				? currentIslandState.inventory
-				: [...currentIslandState.inventory, playerEgg],
+			inventory: newInventory,
 		};
 
 		return {
@@ -561,16 +433,9 @@ export const playersSlice = createProducer({} as PlayersState, {
 		}
 
 		const currentIslandState = getCurrentIslandState(playerState);
-
-		// 确保放置的物品从其他位置移除
-		const cleanedIslandState = removeItemFromAllLocations(
-			currentIslandState,
-			placedItem.instanceId,
-		);
-
 		const updatedIslandState = {
-			...cleanedIslandState,
-			placed: [...cleanedIslandState.placed, placedItem],
+			...currentIslandState,
+			placed: [...currentIslandState.placed, placedItem],
 		};
 
 		return {
@@ -584,8 +449,6 @@ export const playersSlice = createProducer({} as PlayersState, {
 			},
 		};
 	},
-
-	// ==================== 玩家管理 ====================
 
 	/**
 	 * 玩家加入游戏 - 初始化玩家状态.
@@ -627,118 +490,42 @@ export const playersSlice = createProducer({} as PlayersState, {
 	},
 
 	/**
-	 * 卸下装备（从装备槽到背包）.
-	 *
-	 * @param state - 当前状态.
-	 * @param playerId - 玩家ID.
-	 * @param itemInstanceId - 物品实例ID.
-	 * @returns 更新后的状态.
-	 */
-	removeEquippedItem: (state, playerId: string, itemInstanceId: string): PlayersState => {
-		const playerState = state[playerId];
-		if (!playerState) {
-			return state;
-		}
-
-		const currentIslandState = getCurrentIslandState(playerState);
-
-		// 查找物品在装备槽中
-		const itemIndex = currentIslandState.equipped.findIndex(
-			item => item.instanceId === itemInstanceId,
-		);
-		if (itemIndex === -1) {
-			return state;
-		}
-
-		const item = currentIslandState.equipped[itemIndex];
-		if (!item) {
-			return state;
-		}
-
-		const newEquipped = [...currentIslandState.equipped];
-		newEquipped.unorderedRemove(itemIndex);
-
-		const updatedIslandState = {
-			...currentIslandState,
-			equipped: newEquipped,
-			inventory: [...currentIslandState.inventory, item],
-		};
-
-		return {
-			...state,
-			[playerId]: {
-				...playerState,
-				islands: {
-					...playerState.islands,
-					[playerState.plot.islandId]: updatedIslandState,
-				},
-			},
-		};
-	},
-
-	/**
-	 * 从背包移除物品.
-	 *
-	 * @param state - 当前状态.
-	 * @param playerId - 玩家ID.
-	 * @param itemInstanceId - 物品实例ID.
-	 * @returns 更新后的状态.
-	 */
-	removeFromInventory: (state, playerId: string, itemInstanceId: string): PlayersState => {
-		const playerState = state[playerId];
-		if (!playerState) {
-			return state;
-		}
-
-		const currentIslandState = getCurrentIslandState(playerState);
-		const updatedIslandState = {
-			...currentIslandState,
-			inventory: currentIslandState.inventory.filter(
-				item => item.instanceId !== itemInstanceId,
-			),
-		};
-
-		return {
-			...state,
-			[playerId]: {
-				...playerState,
-				islands: {
-					...playerState.islands,
-					[playerState.plot.islandId]: updatedIslandState,
-				},
-			},
-		};
-	},
-
-	/**
 	 * 从当前岛屿移除放置的物品.
 	 *
 	 * @param state - 当前状态.
 	 * @param playerId - 玩家ID.
-	 * @param itemInstanceId - 物品实例ID.
+	 * @param itemIndex - 物品索引.
 	 * @returns 更新后的状态.
 	 */
-	removeItem: (state, playerId: string, itemInstanceId: string): PlayersState => {
+	removePlacedItem: (state, playerId: string, itemIndex: number): PlayersState => {
 		const playerState = state[playerId];
 		if (!playerState) {
 			return state;
 		}
 
 		const currentIslandState = getCurrentIslandState(playerState);
-		const itemIndex = currentIslandState.placed.findIndex(
-			item => item.instanceId === itemInstanceId,
-		);
-		if (itemIndex === -1) {
+		const newPlacedItems = [...currentIslandState.placed];
+		const removedItem = newPlacedItems[itemIndex];
+
+		if (!removedItem) {
 			return state;
 		}
 
-		const newPlacedItems = [...currentIslandState.placed];
 		newPlacedItems.unorderedRemove(itemIndex);
 
-		const updatedIslandState = {
+		let updatedIslandState = {
 			...currentIslandState,
 			placed: newPlacedItems,
 		};
+
+		// 检查是否是宠物类型，如果是则可以放回背包
+		if ("itemType" in removedItem && removedItem.itemType === ItemType.Pet) {
+			const petItem = removedItem as PlayerInventoryItem;
+			updatedIslandState = {
+				...updatedIslandState,
+				inventory: [...updatedIslandState.inventory, petItem],
+			};
+		}
 
 		return {
 			...state,
@@ -752,69 +539,31 @@ export const playersSlice = createProducer({} as PlayersState, {
 		};
 	},
 
+	// ==================== 玩家管理 ====================
+
 	/**
-	 * 设置手持物品（确保唯一性）.
+	 * 将物品放回背包（只有宠物可以放回）.
 	 *
 	 * @param state - 当前状态.
 	 * @param playerId - 玩家ID.
-	 * @param itemInstanceId - 物品实例ID.
+	 * @param item - 要放回的物品.
 	 * @returns 更新后的状态.
 	 */
-	setHeldItem: (state, playerId: string, itemInstanceId: string): PlayersState => {
+	returnItemToInventory: (state, playerId: string, item: PlayerInventoryItem): PlayersState => {
 		const playerState = state[playerId];
 		if (!playerState) {
 			return state;
 		}
 
+		// 只有宠物可以放回背包
+		if (!canReturnToInventory(item)) {
+			return state;
+		}
+
 		const currentIslandState = getCurrentIslandState(playerState);
-
-		// 查找物品在装备槽中的索引
-		const equippedIndex = currentIslandState.equipped.findIndex(
-			item => item.instanceId === itemInstanceId,
-		);
-
-		if (equippedIndex !== -1) {
-			// 物品在装备槽中，直接设置heldIndex
-			const updatedIslandState = {
-				...currentIslandState,
-				heldIndex: equippedIndex,
-			};
-
-			return {
-				...state,
-				[playerId]: {
-					...playerState,
-					islands: {
-						...playerState.islands,
-						[playerState.plot.islandId]: updatedIslandState,
-					},
-				},
-			};
-		}
-
-		// 查找物品在背包中
-		const inventoryItem = currentIslandState.inventory.find(
-			item => item.instanceId === itemInstanceId,
-		);
-
-		if (!inventoryItem) {
-			return state;
-		}
-
-		// 检查装备槽是否有空位
-		if (!hasEquippedSlot(currentIslandState)) {
-			return state;
-		}
-
-		// 从背包移除并添加到装备槽
 		const updatedIslandState = {
 			...currentIslandState,
-			equipped: [...currentIslandState.equipped, inventoryItem],
-			// 新添加的物品索引
-			heldIndex: currentIslandState.equipped.size(),
-			inventory: currentIslandState.inventory.filter(
-				item => item.instanceId !== itemInstanceId,
-			),
+			inventory: [...currentIslandState.inventory, item],
 		};
 
 		return {
@@ -865,32 +614,6 @@ export const playersSlice = createProducer({} as PlayersState, {
 	},
 
 	/**
-	 * 设置地块索引.
-	 *
-	 * @param state - 当前状态.
-	 * @param playerId - 玩家ID.
-	 * @param index - 地块索引.
-	 * @returns 更新后的状态.
-	 */
-	setPlotIndex: (state, playerId: string, index: number): PlayersState => {
-		const playerState = state[playerId];
-		if (!playerState) {
-			return state;
-		}
-
-		return {
-			...state,
-			[playerId]: {
-				...playerState,
-				plot: {
-					...playerState.plot,
-					index,
-				},
-			},
-		};
-	},
-
-	/**
 	 * 在当前岛屿传送带上生成蛋.
 	 *
 	 * @param state - 当前状态.
@@ -921,70 +644,6 @@ export const playersSlice = createProducer({} as PlayersState, {
 					...playerState.conveyor,
 					lastEggGenerationTime: Workspace.GetServerTimeNow(),
 				},
-				islands: {
-					...playerState.islands,
-					[playerState.plot.islandId]: updatedIslandState,
-				},
-			},
-		};
-	},
-
-	/**
-	 * 切换手持物品（仅在装备槽中的物品之间切换）.
-	 *
-	 * @param state - 当前状态.
-	 * @param playerId - 玩家ID.
-	 * @param itemInstanceId - 物品实例ID.
-	 * @returns 更新后的状态.
-	 */
-	switchHeldItem: (state, playerId: string, itemInstanceId: string): PlayersState => {
-		const playerState = state[playerId];
-		if (!playerState) {
-			return state;
-		}
-
-		const currentIslandState = getCurrentIslandState(playerState);
-
-		// 查找物品在装备槽中的索引
-		const equippedIndex = currentIslandState.equipped.findIndex(
-			item => item.instanceId === itemInstanceId,
-		);
-
-		// 只有装备槽中的物品才能被设为手持
-		if (equippedIndex === -1) {
-			return state;
-		}
-
-		// 检查当前是否手持此物品
-		if (currentIslandState.heldIndex === equippedIndex) {
-			// 如果当前已手持此物品，则取消手持
-			const updatedIslandState = {
-				...currentIslandState,
-				heldIndex: undefined,
-			};
-
-			return {
-				...state,
-				[playerId]: {
-					...playerState,
-					islands: {
-						...playerState.islands,
-						[playerState.plot.islandId]: updatedIslandState,
-					},
-				},
-			};
-		}
-
-		// 设置为手持物品
-		const updatedIslandState = {
-			...currentIslandState,
-			heldIndex: equippedIndex,
-		};
-
-		return {
-			...state,
-			[playerId]: {
-				...playerState,
 				islands: {
 					...playerState.islands,
 					[playerState.plot.islandId]: updatedIslandState,
@@ -1068,67 +727,6 @@ export const playersSlice = createProducer({} as PlayersState, {
 					...playerState.conveyor,
 					speedMode,
 					speedModeHistory: newSpeedModeHistory,
-				},
-			},
-		};
-	},
-
-	/**
-	 * 更新当前岛屿上物品的位置.
-	 *
-	 * @param state - 当前状态.
-	 * @param playerId - 玩家ID.
-	 * @param itemInstanceId - 物品实例ID.
-	 * @param newPosition - 新位置.
-	 * @returns 更新后的状态.
-	 */
-	updateItemPosition: (
-		state,
-		playerId: string,
-		itemInstanceId: string,
-		newPosition: CFrame,
-	): PlayersState => {
-		const playerState = state[playerId];
-		if (!playerState) {
-			return state;
-		}
-
-		const currentIslandState = getCurrentIslandState(playerState);
-		const itemIndex = currentIslandState.placed.findIndex(
-			item => item.instanceId === itemInstanceId,
-		);
-		if (itemIndex === -1) {
-			return state;
-		}
-
-		const item = currentIslandState.placed[itemIndex];
-		if (!item) {
-			return state;
-		}
-
-		const updatedItem: PlayerPlacedItem = {
-			...item,
-			placedData: {
-				...item.placedData,
-				location: newPosition,
-			},
-		};
-
-		const newPlacedItems = [...currentIslandState.placed];
-		newPlacedItems[itemIndex] = updatedItem;
-
-		const updatedIslandState = {
-			...currentIslandState,
-			placed: newPlacedItems,
-		};
-
-		return {
-			...state,
-			[playerId]: {
-				...playerState,
-				islands: {
-					...playerState.islands,
-					[playerState.plot.islandId]: updatedIslandState,
 				},
 			},
 		};

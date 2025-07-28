@@ -5,6 +5,7 @@ import { RunService, TweenService } from "@rbxts/services";
 
 import type { RootStore } from "client/store";
 import { $NODE_ENV } from "rbxts-transform-env";
+import { remotes } from "shared/remotes";
 import { selectConveyorEggById } from "shared/store/players/selectors";
 import { calculateEggProgress } from "shared/util/egg-util";
 import { Tag } from "types/enum/tag";
@@ -108,6 +109,19 @@ export class ConveyorEggComponent extends BaseComponent<EggAttributes, EggModel>
 	private collectEgg(): void {
 		// 这里应该发送远程事件到服务器
 		this.logger.Info(`Collecting egg ${this.attributes.instanceId}`);
+
+		remotes.plot.buyConveyorEgg
+			.request(this.attributes.instanceId)
+			.andThen(result => {
+				if (result) {
+					this.logger.Info(`Successfully collected egg ${this.attributes.instanceId}`);
+				} else {
+					this.logger.Warn(`Failed to collect egg ${this.attributes.instanceId}`);
+				}
+			})
+			.catch(err => {
+				this.logger.Error(`Error collecting egg ${this.attributes.instanceId}: ${err}`);
+			});
 	}
 
 	/** 播放点击特效. */
