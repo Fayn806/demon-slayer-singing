@@ -6,8 +6,8 @@ export interface IslandState {
 		missed: Array<MissedEgg>;
 	};
 	expands: Record<string, boolean>;
-	/** 玩家手持物品. */
-	heldItem?: PlayerInventoryItem;
+	/** 玩家手持物品实例ID. */
+	heldItemInstanceId?: string;
 	/** 玩家背包物品. */
 	inventory: Array<PlayerInventoryItem>;
 	placed: Array<PlayerPlacedItem>;

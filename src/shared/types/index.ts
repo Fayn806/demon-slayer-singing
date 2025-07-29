@@ -107,6 +107,8 @@ export interface MissedEgg extends ConveyorEgg {
 export interface PlayerEgg extends BaseEgg {
 	/** 数量. */
 	count: number;
+	/** 实例ID. */
+	instanceId: string;
 	/** 物品类型. */
 	itemType: ItemType.Egg;
 }
@@ -175,6 +177,8 @@ export interface PlacedBooster extends PlayerBooster {
 export interface PlayerHammer {
 	/** 锤子ID. */
 	hammerId: string;
+	/** 实例ID. */
+	instanceId: string;
 	/** 物品类型. */
 	itemType: ItemType.Hammer;
 	/** 锤子使用次数. */

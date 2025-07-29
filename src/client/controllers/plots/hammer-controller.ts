@@ -1,6 +1,6 @@
 import { Controller } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
-import { Players, RunService, Workspace } from "@rbxts/services";
+import { Workspace } from "@rbxts/services";
 
 import { USER_ID } from "client/constants";
 import type { RootStore } from "client/store";
@@ -8,22 +8,23 @@ import { remotes } from "shared/remotes";
 import { selectIsHoldingHammer, selectPlayerPlotIndex } from "shared/store/players/selectors";
 import type { PlayerPlotState } from "shared/store/players/types";
 
+import type { MouseController, MouseTarget } from "../mouse-controller";
 import type { OnPlayerPlotLoaded } from "./plot-controller";
 
 @Controller({})
 export class HammerController implements OnPlayerPlotLoaded {
 	private readonly currentHighlight = new Instance("Highlight");
-	private readonly mouse = Players.LocalPlayer.GetMouse();
 	private readonly raycastWhitelist: Array<Instance> = [];
 
+	private clickUnsubscribe?: RBXScriptConnection;
 	private currentHighlightedItem?: Model;
 	private hammerSubscription?: () => void;
-	private mouseClickConnection?: RBXScriptConnection;
-	private mouseConnection?: RBXScriptConnection;
+	private targetChangedUnsubscribe?: RBXScriptConnection;
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly store: RootStore,
+		private readonly mouseController: MouseController,
 	) {
 		// 设置高亮样式
 		this.currentHighlight.FillColor = Color3.fromRGB(255, 0, 0);
@@ -50,16 +51,6 @@ export class HammerController implements OnPlayerPlotLoaded {
 		if (this.hammerSubscription) {
 			this.hammerSubscription();
 			this.hammerSubscription = undefined;
-		}
-
-		if (this.mouseClickConnection) {
-			this.mouseClickConnection.Disconnect();
-			this.mouseClickConnection = undefined;
-		}
-
-		if (this.mouseConnection) {
-			this.mouseConnection.Disconnect();
-			this.mouseConnection = undefined;
 		}
 
 		this.clearHighlight();
@@ -115,77 +106,73 @@ export class HammerController implements OnPlayerPlotLoaded {
 
 	/** 开始鼠标检测. */
 	private startMouseDetection(): void {
-		if (this.mouseConnection) {
-			return;
-		}
-
-		this.mouseConnection = RunService.Heartbeat.Connect(() => {
-			this.detectMouseTarget();
+		// 订阅鼠标事件
+		this.targetChangedUnsubscribe = this.mouseController.onTargetChanged(target => {
+			this.handleTargetChanged(target);
 		});
 
-		// 监听鼠标点击事件
-		this.mouseClickConnection = this.mouse.Button1Down.Connect(() => {
-			this.handleMouseClick();
+		this.clickUnsubscribe = this.mouseController.onClick(target => {
+			this.handleMouseClick(target);
 		});
 	}
 
 	/** 停止鼠标检测. */
 	private stopMouseDetection(): void {
-		if (this.mouseConnection) {
-			this.mouseConnection.Disconnect();
-			this.mouseConnection = undefined;
+		// 取消订阅
+		if (this.targetChangedUnsubscribe) {
+			this.targetChangedUnsubscribe.Disconnect();
+			this.targetChangedUnsubscribe = undefined;
 		}
 
-		if (this.mouseClickConnection) {
-			this.mouseClickConnection.Disconnect();
-			this.mouseClickConnection = undefined;
+		if (this.clickUnsubscribe) {
+			this.clickUnsubscribe.Disconnect();
+			this.clickUnsubscribe = undefined;
 		}
 
 		this.clearHighlight();
 	}
 
-	/** 检测鼠标指向的目标. */
-	private detectMouseTarget(): void {
-		const camera = Workspace.CurrentCamera;
-		if (!camera) {
-			return;
-		}
-
-		// 创建从相机到鼠标位置的射线
-		const unitRay = camera.ScreenPointToRay(this.mouse.X, this.mouse.Y);
-
-		// 设置射线检测参数
-		const raycastParameters = new RaycastParams();
-		raycastParameters.FilterType = Enum.RaycastFilterType.Include;
-		raycastParameters.FilterDescendantsInstances = this.raycastWhitelist;
-		raycastParameters.IgnoreWater = true;
-
-		// 执行射线检测
-		const raycastResult = Workspace.Raycast(
-			unitRay.Origin,
-			unitRay.Direction.mul(1000),
-			raycastParameters,
-		);
-
-		if (!raycastResult) {
-			this.clearHighlight();
-			return;
-		}
-
-		const target = raycastResult.Instance;
-		if (!target.IsA("BasePart")) {
+	/**
+	 * 处理鼠标目标变化.
+	 *
+	 * @param target - 鼠标指向的目标.
+	 */
+	private handleTargetChanged(target?: MouseTarget): void {
+		if (!target) {
 			this.clearHighlight();
 			return;
 		}
 
 		// 检查是否是PlayerPlacedItem
-		const placedItemResult = this.findPlayerItem(target);
+		const placedItemResult = this.findPlayerItem(target.instance);
 		if (!placedItemResult) {
 			this.clearHighlight();
 			return;
 		}
 
 		this.handleHover(placedItemResult.item, placedItemResult.folderType);
+	}
+
+	/**
+	 * 处理鼠标点击事件.
+	 *
+	 * @param _target - 被点击的目标.
+	 */
+	private handleMouseClick(_target?: MouseTarget): void {
+		// 如果当前有选中的物品
+		if (!this.currentHighlightedItem) {
+			return;
+		}
+
+		// 根据物品所在的文件夹类型处理不同的点击逻辑
+		const parent = this.currentHighlightedItem.Parent;
+		if (parent?.IsA("Folder") === true) {
+			if (parent.Name === "Expand") {
+				this.handleExpandItemClick(this.currentHighlightedItem);
+			} else if (parent.Name === "Items") {
+				this.handleItemsItemClick(this.currentHighlightedItem);
+			}
+		}
 	}
 
 	/**
@@ -246,24 +233,6 @@ export class HammerController implements OnPlayerPlotLoaded {
 		// 设置新的目标并添加高亮
 		this.currentHighlightedItem = item;
 		this.currentHighlight.Parent = item;
-	}
-
-	/** 处理鼠标点击事件. */
-	private handleMouseClick(): void {
-		// 如果当前有选中的物品
-		if (!this.currentHighlightedItem) {
-			return;
-		}
-
-		// 根据物品所在的文件夹类型处理不同的点击逻辑
-		const parent = this.currentHighlightedItem.Parent;
-		if (parent?.IsA("Folder") === true) {
-			if (parent.Name === "Expand") {
-				this.handleExpandItemClick(this.currentHighlightedItem);
-			} else if (parent.Name === "Items") {
-				this.handleItemsItemClick(this.currentHighlightedItem);
-			}
-		}
 	}
 
 	/**

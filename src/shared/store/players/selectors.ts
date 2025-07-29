@@ -340,8 +340,42 @@ export function selectHeldItem(
 ): (state: SharedState) => PlayerInventoryItem | undefined {
 	return createSelector(
 		selectCurrentIslandState(playerId),
-		(islandState): PlayerInventoryItem | undefined => islandState?.heldItem,
+		(islandState): PlayerInventoryItem | undefined => {
+			if (!islandState) {
+				return undefined;
+			}
+
+			const heldItemId = islandState.heldItemInstanceId;
+			if (heldItemId === undefined || heldItemId === "") {
+				return undefined;
+			}
+
+			return islandState.inventory.find(item => item.instanceId === heldItemId);
+		},
 	);
+}
+
+/**
+ * 选择玩家当前手持物品在整个背包中的索引.
+ *
+ * @param playerId - 玩家ID.
+ * @returns 手持物品在整个背包物品数组中的索引选择器函数（如果没有手持物品则返回undefined）.
+ */
+export function selectHeldItemIndex(playerId: string): (state: SharedState) => number | undefined {
+	return createSelector(selectCurrentIslandState(playerId), (islandState): number | undefined => {
+		if (!islandState) {
+			return undefined;
+		}
+
+		const heldItemId = islandState.heldItemInstanceId;
+		if (heldItemId === undefined || heldItemId === "") {
+			return undefined;
+		}
+
+		// 在背包中查找手持物品的索引
+		const index = islandState.inventory.findIndex(item => item.instanceId === heldItemId);
+		return index >= 0 ? index : undefined;
+	});
 }
 
 /**
@@ -369,6 +403,62 @@ export function selectPlacedItems(
 	return createSelector(
 		selectCurrentIslandState(playerId),
 		(islandState): Array<PlayerPlacedItem> => islandState?.placed ?? [],
+	);
+}
+
+/**
+ * 选择工具栏物品（背包的前九个物品）.
+ *
+ * @param playerId - 玩家ID.
+ * @returns 工具栏物品选择器函数.
+ */
+export function selectToolBarItems(
+	playerId: string,
+): (state: SharedState) => Array<PlayerInventoryItem> {
+	return createSelector(
+		selectInventoryItems(playerId),
+		(inventoryItems): Array<PlayerInventoryItem> => {
+			// 获取背包的前九个物品作为工具栏物品
+			const toolBarSize = 9;
+			const toolBarItems: Array<PlayerInventoryItem> = [];
+
+			for (let index = 0; index < math.min(inventoryItems.size(), toolBarSize); index++) {
+				const item = inventoryItems[index];
+				if (item) {
+					toolBarItems.push(item);
+				}
+			}
+
+			return toolBarItems;
+		},
+	);
+}
+
+/**
+ * 选择背包中除了前九个之外的物品.
+ *
+ * @param playerId - 玩家ID.
+ * @returns 背包中除前九个之外的物品选择器函数.
+ */
+export function selectInventoryExtraItems(
+	playerId: string,
+): (state: SharedState) => Array<PlayerInventoryItem> {
+	return createSelector(
+		selectInventoryItems(playerId),
+		(inventoryItems): Array<PlayerInventoryItem> => {
+			// 获取背包中除了前9个之外的物品
+			const toolBarSize = 9;
+			const extraItems: Array<PlayerInventoryItem> = [];
+
+			for (let index = toolBarSize; index < inventoryItems.size(); index++) {
+				const item = inventoryItems[index];
+				if (item) {
+					extraItems.push(item);
+				}
+			}
+
+			return extraItems;
+		},
 	);
 }
 

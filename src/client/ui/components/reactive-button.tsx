@@ -35,6 +35,7 @@ export function ReactiveButton(props: ReactiveButtonProps): React.ReactNode {
 		CornerRadius,
 		Enabled = true,
 		Native,
+		onClick,
 		onHover,
 		onMouseDown,
 		onMouseEnter,
@@ -63,8 +64,15 @@ export function ReactiveButton(props: ReactiveButtonProps): React.ReactNode {
 	return (
 		<Button
 			Native={{
-				BackgroundTransparency: 1,
 				...Native,
+				BackgroundTransparency: 1,
+			}}
+			onClick={() => {
+				if (!Enabled) {
+					return;
+				}
+
+				onClick?.();
 			}}
 			onMouseDown={() => {
 				if (!Enabled) {
