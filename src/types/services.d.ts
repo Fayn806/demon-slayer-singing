@@ -104,34 +104,42 @@ interface Workspace {
 		Plots: Folder & {
 			"1": Folder & {
 				Boundary: Part;
+				Expand: Folder;
 				Respawn: Part;
 			};
 			"2": Folder & {
 				Boundary: Part;
+				Expand: Folder;
 				Respawn: Part;
 			};
 			"3": Folder & {
 				Boundary: Part;
+				Expand: Folder;
 				Respawn: Part;
 			};
 			"4": Folder & {
 				Boundary: Part;
+				Expand: Folder;
 				Respawn: Part;
 			};
 			"5": Folder & {
 				Boundary: Part;
+				Expand: Folder;
 				Respawn: Part;
 			};
 			"6": Folder & {
 				Boundary: Part;
+				Expand: Folder;
 				Respawn: Part;
 			};
 			"7": Folder & {
 				Boundary: Part;
+				Expand: Folder;
 				Respawn: Part;
 			};
 			"8": Folder & {
 				Boundary: Part;
+				Expand: Folder;
 				Respawn: Part;
 			};
 		};

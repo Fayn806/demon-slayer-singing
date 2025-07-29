@@ -70,20 +70,6 @@ export class MouseController implements OnPlayerPlotLoaded {
 						raycastDistance: 1000,
 						whitelist: this.raycastWhitelist,
 					});
-				} else {
-					const boundary = plotFolder.FindFirstChild("Boundary");
-					if (!boundary) {
-						this.logger.Warn(
-							`Boundary part not found in plot folder for player index ${playerIndex}. Cannot set raycast whitelist.`,
-						);
-						return;
-					}
-
-					this.startDetection({
-						ignoreWater: true,
-						raycastDistance: 1000,
-						whitelist: [boundary],
-					});
 				}
 
 				this.logger.Info(`Started mouse detection for held item: ${heldItem.instanceId}`);
