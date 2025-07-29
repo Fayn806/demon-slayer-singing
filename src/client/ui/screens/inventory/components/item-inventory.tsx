@@ -19,7 +19,7 @@ export function ItemInventory(): React.ReactNode {
 
 	const onItemClick = (item: PlayerInventoryItem): void => {
 		print(`Clicked on item: ${item.itemType}`);
-		remotes.plot.switchHeldItem
+		remotes.plot.switchHeldItemInstanceId
 			.request(item.instanceId)
 			.andThen(() => {
 				// 处理成功

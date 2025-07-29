@@ -7,6 +7,7 @@ import { setupLogger } from "shared/functions/setup-logger";
 
 import type { RootStore } from "./store";
 import { store } from "./store";
+import { disableNativeInventory } from "./ui/functions/disble-inventory";
 import { createApp, reactConfig } from "./ui/react-config";
 
 function start(): void {
@@ -23,6 +24,7 @@ function start(): void {
 	Log.Info("Flamework ignite!");
 	Flamework.ignite();
 
+	disableNativeInventory();
 	createApp().catch(() => {
 		Log.Fatal("Failed to create React app!");
 	});

@@ -15,7 +15,7 @@ import { isEggMissed } from "shared/util/egg-util";
 import type { OnPlayerIslandLoad } from "../island-service";
 
 @Service({})
-export class EggService implements OnStart, OnPlayerIslandLoad {
+export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
 	/** 基础蛋生成间隔（秒），会根据传送带速度调整. */
 	private readonly baseEggGenerationInterval = 3;
 	/** 过期蛋清理间隔（秒）. */

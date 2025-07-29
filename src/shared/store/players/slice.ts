@@ -9,7 +9,7 @@ import type {
 	PlayerInventoryItem,
 	PlayerPlacedItem,
 } from "shared/types";
-import { EggType, ItemType } from "shared/types";
+import { ItemType } from "shared/types";
 
 import {
 	ConveyorSpeedMode,
@@ -59,20 +59,12 @@ function createInitialIslandState(): IslandState {
 			missed: [],
 		},
 		expands: {},
-		heldItemInstanceId: "Egg1",
 		inventory: [
 			{
 				hammerId: "hammer1",
 				instanceId: "hammer1",
 				itemType: ItemType.Hammer,
 				uses: 0,
-			},
-			{
-				count: 1,
-				eggId: "Egg1",
-				instanceId: "Egg1",
-				itemType: ItemType.Egg,
-				type: EggType.Normal,
 			},
 		],
 		placed: [],
@@ -743,6 +735,52 @@ export const playersSlice = createProducer({} as PlayersState, {
 		const updatedIslandState = {
 			...currentIslandState,
 			heldItemInstanceId: item.instanceId,
+		};
+
+		return {
+			...state,
+			[playerId]: {
+				...playerState,
+				islands: {
+					...playerState.islands,
+					[playerState.plot.islandId]: updatedIslandState,
+				},
+			},
+		};
+	},
+
+	/**
+	 * 设置手持物品Id.
+	 *
+	 * @param state - 当前状态.
+	 * @param playerId - 玩家ID.
+	 * @param itemInstanceId - 要手持的物品Id.
+	 * @returns 更新后的状态.
+	 */
+	setHeldItemInstanceId: (
+		state,
+		playerId: string,
+		itemInstanceId: string | undefined,
+	): PlayersState => {
+		const playerState = state[playerId];
+		if (!playerState) {
+			return state;
+		}
+
+		const currentIslandState = getCurrentIslandState(playerState);
+		const heldItem = currentIslandState.inventory.find(
+			item => item.instanceId === itemInstanceId,
+		);
+		if (!heldItem) {
+			itemInstanceId = undefined;
+		}
+
+		const updatedIslandState = {
+			...currentIslandState,
+			heldItemInstanceId:
+				currentIslandState.heldItemInstanceId === itemInstanceId
+					? undefined
+					: itemInstanceId,
 		};
 
 		return {

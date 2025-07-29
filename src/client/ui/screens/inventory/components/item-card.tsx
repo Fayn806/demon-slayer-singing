@@ -18,6 +18,7 @@ export function ItemCard(props: ItemCardProps): React.ReactNode {
 	const rem = useRem();
 	const { held = false, onClick } = props;
 	const [transparency, transparencyMotion] = useMotion(0);
+	const [scale, scaleMotion] = useMotion(0);
 
 	useEffect(() => {
 		if (held) {
@@ -27,13 +28,17 @@ export function ItemCard(props: ItemCardProps): React.ReactNode {
 		}
 	}, [held, transparencyMotion]);
 
+	useEffect(() => {
+		scaleMotion.spring(1, springs.responsive);
+	}, [scaleMotion]);
+
 	return (
 		<ReactiveButton
 			AnimatePositionStrength={0.7}
 			AnimateSizeStrength={0.5}
 			Native={{
 				BackgroundTransparency: 1,
-				Size: new UDim2(0, rem(6.5), 0, rem(6.5)),
+				Size: lerpBinding(scale, new UDim2(), new UDim2(0, rem(6.5), 0, rem(6.5))),
 			}}
 			onClick={onClick}
 		>

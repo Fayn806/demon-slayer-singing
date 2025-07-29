@@ -17,15 +17,15 @@ export function ToolBar(): React.ReactNode {
 
 	const onItemClick = (item: PlayerInventoryItem): void => {
 		print(`Clicked on item: ${item.itemType}`);
-		remotes.plot.switchHeldItem
+		remotes.plot.switchHeldItemInstanceId
 			.request(item.instanceId)
 			.andThen(() => {
 				// 处理成功
-				print(`Successfully switched held item to ${item.itemType}`);
+				print(`Successfully switched held item to ${item.instanceId}`);
 			})
 			.catch(() => {
 				// 处理错误
-				print(`Failed to switch held item to ${item.itemType}`);
+				print(`Failed to switch held item to ${item.instanceId}`);
 			});
 	};
 

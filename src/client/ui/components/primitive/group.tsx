@@ -3,6 +3,7 @@ import React, { forwardRef } from "@rbxts/react";
 interface GroupProps extends React.PropsWithChildren {
 	/** All the default properties of a `Frame` component. */
 	Native?: Partial<Omit<React.InstanceProps<Frame>, "BackgroundTransparency">>;
+	Event?: React.InstanceEvent<Frame>
 }
 
 /**
@@ -23,7 +24,7 @@ interface GroupProps extends React.PropsWithChildren {
  * @component
  */
 export const Group = forwardRef(
-	({ Native, children }: Readonly<GroupProps>, ref: React.Ref<Frame>) => {
+	({ Native, children, Event }: Readonly<GroupProps>, ref: React.Ref<Frame>) => {
 		return (
 			<frame
 				ref={ref}
@@ -31,6 +32,7 @@ export const Group = forwardRef(
 				BackgroundTransparency={1}
 				Position={new UDim2(0.5, 0, 0.5, 0)}
 				Size={new UDim2(1, 0, 1, 0)}
+				Event={Event}
 				{...Native}
 			>
 				{children}
