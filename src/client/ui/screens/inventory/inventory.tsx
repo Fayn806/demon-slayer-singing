@@ -1,3 +1,4 @@
+/* eslint-disable @cspell/spellchecker -- Disable spell checking for this file due to Roblox-specific terms and APIs */
 import React, { useState } from "@rbxts/react";
 
 import { InputCapture } from "client/ui/components/input-capture";

@@ -29,7 +29,7 @@ export function ItemCard(props: ItemCardProps): React.ReactNode {
 	}, [held, transparencyMotion]);
 
 	useEffect(() => {
-		scaleMotion.spring(1, springs.responsive);
+		scaleMotion.spring(1, springs.linear);
 	}, [scaleMotion]);
 
 	return (
@@ -62,10 +62,10 @@ export function ItemCard(props: ItemCardProps): React.ReactNode {
 			<Outline
 				CornerRadius={new UDim(0, rem(0.5))}
 				InnerColor={lerpBinding(transparency, palette.base, palette.white)}
-				InnerThickness={rem(4, "pixel")}
+				InnerThickness={rem(3, "pixel")}
 				InnerTransparency={lerpBinding(transparency, 0.9, 0.1)}
 				OuterColor={palette.white}
-				OuterThickness={rem(2, "pixel")}
+				OuterThickness={rem(1.5, "pixel")}
 				OutlineTransparency={0}
 			/>
 		</ReactiveButton>

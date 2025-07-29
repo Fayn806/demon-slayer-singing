@@ -99,7 +99,7 @@ export function ItemInventory(): React.ReactNode {
 					{inventoryItems.map((item, index) => {
 						return (
 							<ItemCard
-								key={item.itemType + index}
+								key={item.instanceId}
 								held={heldItemIndex === index + 9}
 								onClick={() => {
 									onItemClick(item);

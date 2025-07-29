@@ -2,6 +2,7 @@ import React, { useEffect } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 
 import { USER_ID } from "client/constants";
+import { InputCapture } from "client/ui/components/input-capture";
 import { Frame } from "client/ui/components/primitive";
 import { useRem } from "client/ui/hooks";
 import { remotes } from "shared/remotes";
@@ -42,6 +43,27 @@ export function ToolBar(): React.ReactNode {
 				Size: new UDim2(0, 0, 0, rem(7)),
 			}}
 		>
+			<InputCapture
+				onInputBegan={(_, input) => {
+					// 按下波浪键时切换背包的显示状态
+					if (input.UserInputType !== Enum.UserInputType.Keyboard) {
+						return;
+					}
+
+					// 1-9 49-57
+					const key = input.KeyCode.Value;
+					if (key >= 49 && key <= 57) {
+						/** 0-8. */
+						const index = key - 49;
+						if (index < toolBarItems.size()) {
+							const item = toolBarItems[index];
+							if (item) {
+								onItemClick(item);
+							}
+						}
+					}
+				}}
+			/>
 			<uilistlayout
 				FillDirection="Horizontal"
 				HorizontalAlignment="Center"

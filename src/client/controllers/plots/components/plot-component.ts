@@ -226,8 +226,11 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 	}
 
 	private setExpansionExpanded(expansionId: string, isExpanded: boolean): void {
-		const before = isExpanded ? this.instance.Expand : ReplicatedStorage.ExpandReserve;
-		const after = isExpanded ? ReplicatedStorage.ExpandReserve : this.instance.Expand;
+		const reserve = ReplicatedStorage.ExpandReserve.FindFirstChild(
+			this.attributes.plotIndex,
+		) as Folder;
+		const before = isExpanded ? this.instance.Expand : reserve;
+		const after = isExpanded ? reserve : this.instance.Expand;
 
 		const expansionModel = before.FindFirstChild(expansionId);
 		if (!expansionModel) {
