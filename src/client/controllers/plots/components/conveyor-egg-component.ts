@@ -113,7 +113,7 @@ export class ConveyorEggComponent extends BaseComponent<EggAttributes, EggModel>
 		remotes.plot.buyConveyorEgg
 			.request(this.attributes.instanceId)
 			.andThen(result => {
-				if (result) {
+				if (result !== undefined && result) {
 					this.logger.Info(`Successfully collected egg ${this.attributes.instanceId}`);
 				} else {
 					this.logger.Warn(`Failed to collect egg ${this.attributes.instanceId}`);
