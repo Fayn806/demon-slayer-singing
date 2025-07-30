@@ -116,26 +116,40 @@ export interface PlayerEgg extends BaseEgg {
 export interface PlacedEgg extends BaseEgg, PlacedData {
 	/** 孵化剩余时间（秒）. */
 	hatchLeftTime: number;
+	/** 实例ID. */
+	instanceId: string;
+	/** 物品类型. */
+	itemType: ItemType.Egg;
 	/** 幸运加成. */
 	luckBonus?: number;
 	/** 变异类型. */
 	mutations: Array<EggMutation>;
-	/** 大小幸运加成. */
-	sizeLuckBonus?: number;
+	/** 大小加成. */
+	sizeBonus?: number;
 }
 
 /** 玩家的蛋孵化后宠物实例. */
-export interface PlayerPet extends PlacedEgg {
+export interface PlayerPet {
+	/** 蛋的唯一标识符. */
+	eggId: EggId;
 	/** 孵化时间. */
 	hatchTime: number;
 	/** 宠物ID. */
 	instanceId: string;
 	/** 物品类型. */
 	itemType: ItemType.Pet;
+	/** 幸运加成. */
+	luckBonus?: number;
+	/** 变异类型. */
+	mutations: Array<EggMutation>;
 	/** 宠物ID. */
 	petId: string;
+	/** 大小加成. */
+	sizeBonus?: number;
 	/** 总收益. */
 	totalEarnings: number;
+	/** 蛋的类型. */
+	type: EggType;
 }
 
 export interface PlacedPet extends PlacedData, PlayerPet {
@@ -167,11 +181,9 @@ export interface PlayerBooster {
 }
 
 /** 玩家放置的加成道具. */
-export interface PlacedBooster extends PlayerBooster {
+export interface PlacedBooster extends PlacedData, PlayerBooster {
 	/** 物品类型. */
 	itemType: ItemType.Booster;
-	/** 放置数据. */
-	placedData: PlacedData;
 }
 
 export interface PlayerHammer {

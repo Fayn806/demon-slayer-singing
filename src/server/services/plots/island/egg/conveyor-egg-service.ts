@@ -11,6 +11,7 @@ import type { IslandState, PlayerState } from "shared/store/players/types";
 import type { ConveyorEgg, EggId, MissedEgg } from "shared/types";
 import { EggType, ItemType } from "shared/types";
 import { isEggMissed } from "shared/util/egg-util";
+import { generateUniqueId } from "shared/util/id-util";
 
 import type { OnPlayerIslandLoad } from "../island-service";
 
@@ -77,7 +78,7 @@ export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
 		const conveyorEgg = this.createConveyorEgg(
 			playerEntity,
 			eggId,
-			`egg_${userId}_${Workspace.GetServerTimeNow()}_${math.random()}`,
+			generateUniqueId("conveyorEgg"),
 			customProperties,
 		);
 
@@ -265,12 +266,11 @@ export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
 		const { userId } = playerEntity;
 		this.logger.Info(`Force generating egg for player ${userId}.`);
 
-		const currentTime = Workspace.GetServerTimeNow();
 		const actualEggId: EggId = eggId ?? "Egg1";
 		const conveyorEgg = this.createConveyorEgg(
 			playerEntity,
 			actualEggId,
-			`egg_${userId}_${currentTime}`,
+			generateUniqueId("conveyorEgg"),
 		);
 
 		store.spawnEggOnConveyor(userId, conveyorEgg);
@@ -457,7 +457,7 @@ export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
 		const conveyorEgg = this.createConveyorEgg(
 			playerEntity,
 			"Egg1" as EggId,
-			`egg_${userId}_${Workspace.GetServerTimeNow()}`,
+			generateUniqueId("conveyorEgg"),
 		);
 
 		// 添加蛋到传送带（会自动更新lastEggGenerationTime）

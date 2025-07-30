@@ -512,14 +512,18 @@ export const playersSlice = createProducer({} as PlayersState, {
 	},
 
 	/**
-	 * 放置物品到当前岛屿.
+	 * 从背包放置物品到当前岛屿.
 	 *
 	 * @param state - 当前状态.
 	 * @param playerId - 玩家ID.
 	 * @param placedItem - 放置的物品.
 	 * @returns 更新后的状态.
 	 */
-	placeItem: (state, playerId: string, placedItem: PlayerPlacedItem): PlayersState => {
+	placeItemFromInventory: (
+		state,
+		playerId: string,
+		placedItem: PlayerPlacedItem,
+	): PlayersState => {
 		const playerState = state[playerId];
 		if (!playerState) {
 			return state;
@@ -585,6 +589,113 @@ export const playersSlice = createProducer({} as PlayersState, {
 	},
 
 	/**
+	 * 从背包中移除指定蛋.
+	 *
+	 * @param state - 当前状态.
+	 * @param playerId - 玩家ID.
+	 * @param itemInstanceId - 要移除的物品实例ID.
+	 * @param count
+	 * @returns 更新后的状态.
+	 */
+	removeEggFromInventory: (
+		state,
+		playerId: string,
+		itemInstanceId: string,
+		count: number,
+	): PlayersState => {
+		const playerState = state[playerId];
+		if (!playerState) {
+			return state;
+		}
+
+		const currentIslandState = getCurrentIslandState(playerState);
+		const itemIndex = currentIslandState.inventory.findIndex(
+			item => item.instanceId === itemInstanceId,
+		);
+
+		if (itemIndex === -1) {
+			return state;
+		}
+
+		const item = currentIslandState.inventory[itemIndex];
+
+		if (!item || item.itemType !== ItemType.Egg) {
+			return state;
+		}
+
+		const newInventory = [...currentIslandState.inventory];
+		if (item.count === count) {
+			// 如果数量正好等于要移除的数量，则直接删除
+			newInventory.unorderedRemove(itemIndex);
+		} else {
+			// 否则减少数量
+			newInventory[itemIndex] = {
+				...item,
+				count: item.count - count,
+			} as PlayerEgg;
+		}
+
+		const updatedIslandState = {
+			...currentIslandState,
+			inventory: newInventory,
+		};
+
+		return {
+			...state,
+			[playerId]: {
+				...playerState,
+				islands: {
+					...playerState.islands,
+					[playerState.plot.islandId]: updatedIslandState,
+				},
+			},
+		};
+	},
+
+	/**
+	 * 从背包中移除指定物品.
+	 *
+	 * @param state - 当前状态.
+	 * @param playerId - 玩家ID.
+	 * @param itemInstanceId - 要移除的物品实例ID.
+	 * @returns 更新后的状态.
+	 */
+	removeItemFromInventory: (state, playerId: string, itemInstanceId: string): PlayersState => {
+		const playerState = state[playerId];
+		if (!playerState) {
+			return state;
+		}
+
+		const currentIslandState = getCurrentIslandState(playerState);
+		const itemIndex = currentIslandState.inventory.findIndex(
+			item => item.instanceId === itemInstanceId,
+		);
+
+		if (itemIndex === -1) {
+			return state;
+		}
+
+		const newInventory = [...currentIslandState.inventory];
+		newInventory.unorderedRemove(itemIndex);
+
+		const updatedIslandState = {
+			...currentIslandState,
+			inventory: newInventory,
+		};
+
+		return {
+			...state,
+			[playerId]: {
+				...playerState,
+				islands: {
+					...playerState.islands,
+					[playerState.plot.islandId]: updatedIslandState,
+				},
+			},
+		};
+	},
+
+	/**
 	 * 从当前岛屿移除放置的物品.
 	 *
 	 * @param state - 当前状态.
@@ -614,7 +725,7 @@ export const playersSlice = createProducer({} as PlayersState, {
 		};
 
 		// 检查是否是宠物类型，如果是则可以放回背包
-		if ("itemType" in removedItem && removedItem.itemType === ItemType.Pet) {
+		if ((removedItem.itemType as ItemType) === ItemType.Pet) {
 			const petItem = removedItem as PlayerInventoryItem;
 			updatedIslandState = {
 				...updatedIslandState,

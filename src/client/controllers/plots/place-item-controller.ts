@@ -4,13 +4,15 @@ import { Players, RunService, UserInputService, Workspace } from "@rbxts/service
 
 import { USER_ID } from "client/constants";
 import type { RootStore } from "client/store";
+import { remotes } from "shared/remotes";
 import {
 	selectHeldItem,
+	selectPlacedItems,
 	selectPlayerPlotIndex,
 	selectUnlockedExpansions,
 } from "shared/store/players/selectors";
 import type { PlayerPlotState } from "shared/store/players/types";
-import { ItemType, type PlayerInventoryItem } from "shared/types";
+import { ItemType, type PlayerInventoryItem, type PlayerPlacedItem } from "shared/types";
 import {
 	getPlacementAreaFromPart,
 	type PlacedItemInfo,
@@ -18,7 +20,6 @@ import {
 	validateItemPlacement,
 } from "shared/util/location-util";
 
-import type { MouseController } from "../mouse-controller";
 import type { OnPlayerPlotLoaded } from "./plot-controller";
 
 /**
@@ -39,9 +40,10 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 	private readonly lockedExpansionPositions: Array<PlacementArea> = [];
 	/** 本地玩家的鼠标对象. */
 	private readonly mouse: Mouse;
-
+	private readonly placedItemInfos: Array<PlacedItemInfo> = [];
 	/** 玩家已放置物品的文件夹缓存. */
-	private playerPlacedItemFolder: Folder | undefined;
+	private readonly playerPlacedItemFolder: Folder | undefined;
+
 	/** 预览物品的 Part 对象. */
 	private previewPart: Part | undefined;
 	/** 当前目标位置（用于平滑移动预览物品）. */
@@ -50,7 +52,6 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 	constructor(
 		private readonly logger: Logger,
 		private readonly store: RootStore,
-		private readonly mouseController: MouseController,
 	) {
 		// 获取本地玩家的鼠标对象
 		this.mouse = Players.LocalPlayer.GetMouse();
@@ -91,11 +92,19 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 		});
 
 		// 获取并监听未解锁的扩展区域
-		const unloadedExpansions = this.store.getState(selectUnlockedExpansions(playerId));
-		this.updateExpansionsPositions(unloadedExpansions);
+		const unlockedExpansions = this.store.getState(selectUnlockedExpansions(playerId));
+		this.updateExpansionsPositions(unlockedExpansions);
 
 		this.store.subscribe(selectUnlockedExpansions(playerId), expansions => {
 			this.updateExpansionsPositions(expansions);
+		});
+
+		// 获取当前已放置的物品信息
+		const placedItems = this.store.getState(selectPlacedItems(USER_ID));
+		this.updatePlaceItemInfos(placedItems);
+
+		this.store.subscribe(selectPlacedItems(USER_ID), newPlacedItems => {
+			this.updatePlaceItemInfos(newPlacedItems);
 		});
 	}
 
@@ -152,77 +161,18 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 		}
 	}
 
-	/**
-	 * 获取玩家已放置物品的文件夹 使用缓存机制避免重复查找.
-	 *
-	 * @returns 已放置物品的文件夹，如果未找到则返回 undefined.
-	 */
-	private getPlayerPlacedItemFolder(): Folder | undefined {
-		// 如果已经缓存，直接返回
-		if (this.playerPlacedItemFolder !== undefined) {
-			return this.playerPlacedItemFolder;
+	private updatePlaceItemInfos(placedItems: Array<PlayerPlacedItem>): void {
+		this.placedItemInfos.clear();
+		// 更新已放置物品的位置
+		for (const item of placedItems) {
+			const { location } = item;
+			const range = 2;
+			const data = {
+				position: location.Position,
+				range,
+			};
+			this.placedItemInfos.push(data);
 		}
-
-		// 查找玩家地块文件夹
-		const playerIndex = this.store.getState(selectPlayerPlotIndex(USER_ID));
-		const plotFolder = Workspace.Main.Plots.FindFirstChild(tostring(playerIndex));
-		if (!plotFolder) {
-			this.logger.Warn(`Plot folder not found for player index ${playerIndex}.`);
-			return undefined;
-		}
-
-		// 查找已放置物品文件夹
-		const placedItemFolder = plotFolder.FindFirstChild("Items");
-		if (!placedItemFolder) {
-			this.logger.Warn(
-				`Items folder not found in plot folder for player index ${playerIndex}.`,
-			);
-			return undefined;
-		}
-
-		// 缓存文件夹引用
-		this.playerPlacedItemFolder = placedItemFolder as Folder;
-		return this.playerPlacedItemFolder;
-	}
-
-	/**
-	 * 获取当前地块中所有已放置物品的数据 遍历 Items 文件夹中的所有子对象，提取位置和范围信息.
-	 *
-	 * @returns 已放置物品信息数组.
-	 */
-	private getPlacedItemsData(): Array<PlacedItemInfo> {
-		const placedItemFolder = this.getPlayerPlacedItemFolder();
-		if (!placedItemFolder) {
-			return [];
-		}
-
-		const placedItems: Array<PlacedItemInfo> = [];
-
-		// 遍历文件夹中的所有已放置物品
-		for (const child of placedItemFolder.GetChildren()) {
-			if (child.IsA("Model") || child.IsA("Part")) {
-				// 从物品的属性或名称中获取 instanceId
-				const attributeInstanceId = child.GetAttribute("InstanceId");
-				const instanceId = typeIs(attributeInstanceId, "string")
-					? attributeInstanceId
-					: child.Name;
-
-				// 获取物品位置（Model 使用 GetPivot，Part 使用 Position）
-				const position = child.IsA("Model") ? child.GetPivot().Position : child.Position;
-
-				// 获取物品范围（从属性中读取或使用默认值）
-				const attributeRange = child.GetAttribute("Range");
-				const range = typeIs(attributeRange, "number") ? attributeRange : 2;
-
-				placedItems.push({
-					instanceId,
-					position,
-					range,
-				});
-			}
-		}
-
-		return placedItems;
 	}
 
 	/**
@@ -236,18 +186,13 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 			return;
 		}
 
+		// 清理相关逻辑
+		this.cleanupHeldItem();
+
 		this.logger.Info(`Handling held item: ${heldItem.instanceId} of type ${heldItem.itemType}`);
 
-		// 获取当前已放置的物品信息
-		const placedItems = this.getPlacedItemsData();
-
 		// 创建待放置物品的信息（包含范围）
-		const itemInfo: PlacedItemInfo = {
-			instanceId: heldItem.instanceId,
-			// 位置会在验证时重新设置
-			position: new Vector3(0, 0, 0),
-			range: this.getItemRangeByType(heldItem.itemType),
-		};
+		const range = this.getItemRangeByType(heldItem.itemType);
 
 		// 定义放置区域（根据实际地块大小调整）
 		const plotCenter = this.getPlotCenter();
@@ -260,7 +205,7 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 		};
 
 		// 创建预览物品
-		this.createPreviewPart(itemInfo.range);
+		this.createPreviewPart(range);
 
 		// 使用 RunService 来实时更新预览物品位置和状态
 		const renderStepConnection = RunService.Heartbeat.Connect(() => {
@@ -270,9 +215,11 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 			if (mousePosition) {
 				// 验证是否可以在该位置放置物品
 				const validation = validateItemPlacement(
-					mousePosition,
-					itemInfo,
-					placedItems,
+					{
+						position: mousePosition,
+						range,
+					},
+					this.placedItemInfos,
 					placementArea,
 					this.lockedExpansionPositions,
 				);
@@ -324,9 +271,11 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 
 			// 验证放置位置
 			const validation = validateItemPlacement(
-				mousePosition,
-				itemInfo,
-				placedItems,
+				{
+					position: mousePosition,
+					range,
+				},
+				this.placedItemInfos,
 				placementArea,
 				this.lockedExpansionPositions,
 			);
@@ -371,6 +320,18 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 		this.logger.Info(`Placing item ${item.instanceId} at position ${position}`);
 		// 将来实现实际的物品放置逻辑
 		// 例如：创建物品模型、设置位置、更新状态等
+		remotes.plot
+			.placeItem(item.instanceId, new CFrame(position))
+			.andThen(() => {
+				this.logger.Info(
+					`Successfully placed item ${item.instanceId} at position ${position}`,
+				);
+			})
+			.catch(() => {
+				this.logger.Error(
+					`Failed to place item ${item.instanceId} at position ${position}`,
+				);
+			});
 	}
 
 	/** 清理手持物品相关的所有资源 包括预览物品、事件连接和状态重置. */

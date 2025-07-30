@@ -1,6 +1,5 @@
 /** 已放置物品的信息. */
 export interface PlacedItemInfo {
-	instanceId: string;
 	position: Vector3;
 	range: number;
 }
@@ -190,17 +189,18 @@ export function clampPositionToBounds(
  * @param itemInfo - 待放置的物品信息.
  * @param placedItems - 已放置的物品列表.
  * @param placementArea - 允许的放置区域.
+ * @param lockedPlacementArea
  * @returns 放置验证结果.
  */
 export function validateItemPlacement(
-	targetPosition: Vector3,
 	itemInfo: PlacedItemInfo,
 	placedItems: Array<PlacedItemInfo>,
 	placementArea: PlacementArea,
-    lockedPlacementArea?: Array<PlacementArea>,
+	lockedPlacementArea?: Array<PlacementArea>,
 ): PlacementValidation {
 	// 获取物品的范围信息
 	const itemRange = itemInfo.range;
+	const targetPosition = itemInfo.position;
 
 	// 将目标位置调整到统一的Y轴水平面
 	const adjustedPosition = new Vector3(targetPosition.X, placementArea.yLevel, targetPosition.Z);
@@ -217,7 +217,7 @@ export function validateItemPlacement(
 	const hasCollision = hasCollisionWithPlacedItems(clampedPosition, itemRange, placedItems);
 
 	// 检查是否与锁定区域重叠
-	const hasLockedOverlap = lockedPlacementArea 
+	const hasLockedOverlap = lockedPlacementArea
 		? hasOverlapWithLockedAreas(clampedPosition, itemRange, lockedPlacementArea)
 		: false;
 
@@ -226,7 +226,7 @@ export function validateItemPlacement(
 		return {
 			canPlace: false,
 			reason: "当前位置与已放置物品冲突",
-		    suggestedPosition: clampedPosition,
+			suggestedPosition: clampedPosition,
 		};
 	}
 
@@ -234,7 +234,7 @@ export function validateItemPlacement(
 		return {
 			canPlace: false,
 			reason: "当前位置与锁定区域重叠",
-		    suggestedPosition: clampedPosition,
+			suggestedPosition: clampedPosition,
 		};
 	}
 

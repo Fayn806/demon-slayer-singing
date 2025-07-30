@@ -10,15 +10,18 @@ import { $NODE_ENV } from "rbxts-transform-env";
 import {
 	selectConveyorEggs,
 	selectIslandExpansions,
+	selectPlacedItems,
 	selectPlayerConveyor,
 } from "shared/store/players/selectors";
 import { ConveyorSpeedMode, type SpeedHistoryEntry } from "shared/store/players/types";
-import type { ConveyorEgg } from "shared/types";
+import { type ConveyorEgg, ItemType, type PlayerPlacedItem } from "shared/types";
 import { Tag } from "types/enum/tag";
-import type { EggModel } from "types/interfaces/components/egg";
+import type { ConveyorEggModel } from "types/interfaces/components/egg";
+import type { PlacedEggModel } from "types/interfaces/components/placed-egg";
 import type { PlotAttributes, PlotFolder } from "types/interfaces/components/plot";
 
 import type { ConveyorEggComponent } from "./conveyor-egg-component";
+import type { PlacedEggComponent } from "./placed-egg-component";
 
 @Component({
 	refreshAttributes: $NODE_ENV === "development",
@@ -27,6 +30,7 @@ import type { ConveyorEggComponent } from "./conveyor-egg-component";
 export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> implements OnStart {
 	private readonly conveyorEggComponents = new Map<string, ConveyorEggComponent>();
 	private readonly janitor = new Janitor();
+	private readonly placedItemComponents = new Map<string, PlacedEggComponent>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -58,12 +62,12 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 	 *
 	 * @returns 蛋模型数组.
 	 */
-	public getEggModels(): Array<EggModel> {
-		const eggModels: Array<EggModel> = [];
+	public getEggModels(): Array<ConveyorEggModel> {
+		const eggModels: Array<ConveyorEggModel> = [];
 
 		for (const child of this.instance.Eggs.GetChildren()) {
 			if (child.IsA("Model")) {
-				eggModels.push(child as EggModel);
+				eggModels.push(child as ConveyorEggModel);
 			}
 		}
 
@@ -76,9 +80,9 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 	 * @param eggInstanceId - 蛋的实例ID.
 	 * @returns 找到的蛋模型，如果未找到则返回 undefined.
 	 */
-	public findEggModel(eggInstanceId: string): EggModel | undefined {
+	public findEggModel(eggInstanceId: string): ConveyorEggModel | undefined {
 		const eggModel = this.instance.Eggs.FindFirstChild(eggInstanceId);
-		return eggModel?.IsA("Model") === true ? (eggModel as EggModel) : undefined;
+		return eggModel?.IsA("Model") === true ? (eggModel as ConveyorEggModel) : undefined;
 	}
 
 	/** 清空所有蛋模型. */
@@ -146,6 +150,7 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 
 		this.initializeConveyorEggs();
 		this.initializeExpansions();
+		this.initializePlacedItems();
 	}
 
 	private initializeConveyorEggs(): void {
@@ -170,6 +175,57 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 				},
 			),
 		);
+	}
+
+	private initializePlacedItems(): void {
+		// 监听玩家已放置物品状态变化
+		this.janitor.Add(
+			this.store.subscribe(selectPlacedItems(this.attributes.playerId), placedItems => {
+				this.updatePlacedItems(placedItems);
+			}),
+		);
+	}
+
+	private updatePlacedItems(placedItems: Array<PlayerPlacedItem>): void {
+		// 更新当前 Plot 中的已放置物品
+		for (const item of placedItems) {
+			const placedItemComponent = this.placedItemComponents.get(item.instanceId);
+			if (placedItemComponent) {
+				continue;
+			}
+
+			this.createPlacedItem(item);
+		}
+	}
+
+	/**
+	 * 创建放置的物品组件.
+	 *
+	 * @param item - 放置的物品数据.
+	 */
+	private createPlacedItem(item: PlayerPlacedItem): void {
+		if (item.itemType === ItemType.Egg) {
+			const eggModel = ReplicatedStorage.Assets.Eggs.FindFirstChild(item.eggId);
+			if (!eggModel) {
+				this.logger.Warn(`Egg model ${item.eggId} not found`);
+				return;
+			}
+
+			const clone = eggModel.Clone() as PlacedEggModel;
+			clone.SetAttribute("instanceId", item.instanceId);
+			clone.SetAttribute("playerId", this.attributes.playerId);
+			clone.Parent = this.instance.Items;
+			clone.PivotTo(item.location);
+
+			// 创建 PlacedEggComponent 实例并初始化
+			const placedEggComponent = this.components.addComponent<PlacedEggComponent>(clone);
+			placedEggComponent.initialize(this);
+			this.placedItemComponents.set(item.instanceId, placedEggComponent);
+		} else {
+			this.logger.Warn(
+				`Unsupported item type ${item.itemType} for placed item ${item.instanceId}`,
+			);
+		}
 	}
 
 	/** 清理孤立的蛋模型（没有对应状态的蛋）. */
@@ -203,7 +259,7 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 			return;
 		}
 
-		const clone = eggModel.Clone() as EggModel;
+		const clone = eggModel.Clone() as ConveyorEggModel;
 		clone.SetAttribute("instanceId", egg.instanceId);
 		clone.SetAttribute("playerId", this.attributes.playerId);
 		clone.Parent = this.instance.Eggs;
