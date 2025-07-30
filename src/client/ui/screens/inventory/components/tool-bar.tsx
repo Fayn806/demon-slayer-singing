@@ -74,8 +74,9 @@ export function ToolBar(): React.ReactNode {
 			{toolBarItems.map((item, index) => {
 				return (
 					<ItemCard
-						key={item.itemType}
+						key={item.instanceId}
 						held={heldItemIndex === index}
+						layoutOrder={index}
 						onClick={() => {
 							onItemClick(item);
 						}}

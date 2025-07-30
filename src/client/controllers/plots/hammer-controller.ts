@@ -13,10 +13,10 @@ import type { OnPlayerPlotLoaded } from "./plot-controller";
 
 @Controller({})
 export class HammerController implements OnPlayerPlotLoaded {
-	private readonly currentHighlight = new Instance("Highlight");
 	private readonly raycastWhitelist: Array<Instance> = [];
 
 	private clickUnsubscribe?: RBXScriptConnection;
+	private currentHighlight?: Highlight;
 	private currentHighlightedItem?: Model;
 	private hammerSubscription?: () => void;
 	private targetChangedUnsubscribe?: RBXScriptConnection;
@@ -25,14 +25,7 @@ export class HammerController implements OnPlayerPlotLoaded {
 		private readonly logger: Logger,
 		private readonly store: RootStore,
 		private readonly mouseController: MouseController,
-	) {
-		// 设置高亮样式
-		this.currentHighlight.FillColor = Color3.fromRGB(255, 0, 0);
-		this.currentHighlight.OutlineColor = Color3.fromRGB(255, 100, 100);
-		this.currentHighlight.FillTransparency = 0.3;
-		this.currentHighlight.OutlineTransparency = 1;
-		this.currentHighlight.DepthMode = Enum.HighlightDepthMode.Occluded;
-	}
+	) {}
 
 	public onPlayerPlotLoaded(playerId: string, _plot: PlayerPlotState): void {
 		if (playerId !== USER_ID) {
@@ -54,6 +47,21 @@ export class HammerController implements OnPlayerPlotLoaded {
 		}
 
 		this.clearHighlight();
+	}
+
+	/**
+	 * 创建新的高亮实例.
+	 *
+	 * @returns 新的高亮实例.
+	 */
+	private createHighlight(): Highlight {
+		const highlight = new Instance("Highlight");
+		highlight.FillColor = Color3.fromRGB(255, 0, 0);
+		highlight.OutlineColor = Color3.fromRGB(255, 100, 100);
+		highlight.FillTransparency = 0.3;
+		highlight.OutlineTransparency = 1;
+		highlight.DepthMode = Enum.HighlightDepthMode.Occluded;
+		return highlight;
 	}
 
 	/** 设置射线检测白名单. */
@@ -226,11 +234,10 @@ export class HammerController implements OnPlayerPlotLoaded {
 		}
 
 		// 移除之前的高亮
-		if (this.currentHighlight.Parent) {
-			this.currentHighlight.Parent = undefined;
-		}
+		this.clearHighlight();
 
-		// 设置新的目标并添加高亮
+		// 创建新的高亮并设置目标
+		this.currentHighlight = this.createHighlight();
 		this.currentHighlightedItem = item;
 		this.currentHighlight.Parent = item;
 	}
@@ -266,15 +273,35 @@ export class HammerController implements OnPlayerPlotLoaded {
 	private handleItemsItemClick(item: Model): void {
 		this.logger.Info(`Collecting/moving items item ${item.Name})`);
 		// 实现收集或移动逻辑：收集物品到背包、移动物品位置等
+		const instanceId = item.GetAttribute("instanceId") as string | undefined;
+		if (instanceId === undefined || instanceId === "") {
+			this.logger.Warn(`Item ${item.Name} does not have an instanceId attribute.`);
+			return;
+		}
+
+		remotes.plot.pickPet
+			.request(instanceId)
+			.andThen(result => {
+				if (result === true) {
+					this.logger.Info(`Successfully picked item ${instanceId}`);
+					// 在这里处理成功收集后的逻辑
+				} else {
+					this.logger.Warn(`Failed to pick item ${instanceId}`);
+				}
+			})
+			.catch(err => {
+				this.logger.Error(tostring(err));
+			});
 	}
 
 	/** 清除当前高亮. */
 	private clearHighlight(): void {
-		if (!this.currentHighlightedItem || !this.currentHighlight.Parent) {
-			return;
+		// 直接销毁当前高亮实例
+		if (this.currentHighlight?.Parent) {
+			this.currentHighlight.Destroy();
+			this.currentHighlight = undefined;
 		}
 
-		this.currentHighlight.Parent = undefined;
 		this.currentHighlightedItem = undefined;
 	}
 }

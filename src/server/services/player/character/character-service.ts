@@ -22,7 +22,11 @@ import type { PlayerEntity } from "../player-entity";
 import type { OnPlayerJoin } from "../player-service";
 
 PhysicsService.RegisterCollisionGroup(CollisionGroup.Character);
-
+PhysicsService.CollisionGroupSetCollidable(
+	CollisionGroup.Character,
+	CollisionGroup.Character,
+	false,
+);
 export interface OnCharacterAdded {
 	/** Fires when a character is added to the game. */
 	onCharacterAdded(character: CharacterRig, playerEntity: PlayerEntity): void;

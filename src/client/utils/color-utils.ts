@@ -62,3 +62,14 @@ export function brightenIfDark(color: Color3) {
 
 	return darkness > 0.5 ? brighten(color, darkness, 0.5) : color;
 }
+
+export function generateColorSequence(colors: Color3[]): ColorSequence {
+	const sequence: ColorSequenceKeypoint[] = [];
+	const length = colors.size();
+
+	colors.forEach((color, index) => {
+		sequence.push(new ColorSequenceKeypoint(index / (length - 1), color));
+	});
+
+	return new ColorSequence(sequence);
+};

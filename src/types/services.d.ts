@@ -1,5 +1,6 @@
 interface ReplicatedStorage {
 	"Assets": Folder & {
+		Characters: Folder;
 		Eggs: Folder & {
 			Egg1: Model;
 			Egg2: Model;

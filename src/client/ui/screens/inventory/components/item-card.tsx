@@ -11,12 +11,13 @@ import { useMotion, useRem } from "client/ui/hooks";
 interface ItemCardProps {
 	/** 是否为持有的物品. */
 	held?: boolean;
+	layoutOrder?: number;
 	onClick?: () => void;
 }
 
 export function ItemCard(props: ItemCardProps): React.ReactNode {
 	const rem = useRem();
-	const { held = false, onClick } = props;
+	const { held = false, layoutOrder, onClick } = props;
 	const [transparency, transparencyMotion] = useMotion(0);
 	const [scale, scaleMotion] = useMotion(0);
 
@@ -38,6 +39,7 @@ export function ItemCard(props: ItemCardProps): React.ReactNode {
 			AnimateSizeStrength={0.5}
 			Native={{
 				BackgroundTransparency: 1,
+				LayoutOrder: layoutOrder ?? 0,
 				Size: lerpBinding(scale, new UDim2(), new UDim2(0, rem(6.5), 0, rem(6.5))),
 			}}
 			onClick={onClick}

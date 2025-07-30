@@ -384,6 +384,61 @@ export const playersSlice = createProducer({} as PlayersState, {
 	},
 
 	/**
+	 * 将放置的宠物收回背包.
+	 *
+	 * @param state - 当前状态.
+	 * @param playerId - 玩家ID.
+	 * @param petInstanceId - 要收回的宠物实例ID.
+	 * @returns 更新后的状态.
+	 */
+	pickPetToInventory: (state, playerId: string, petInstanceId: string): PlayersState => {
+		const playerState = state[playerId];
+		if (!playerState) {
+			return state;
+		}
+
+		const currentIslandState = getCurrentIslandState(playerState);
+
+		// 查找要收回的宠物
+		const petIndex = currentIslandState.placed.findIndex(
+			item => item.instanceId === petInstanceId && item.itemType === ItemType.Pet,
+		);
+
+		if (petIndex === -1) {
+			return state;
+		}
+
+		const placedPet = currentIslandState.placed[petIndex];
+		if (!placedPet || placedPet.itemType !== ItemType.Pet) {
+			return state;
+		}
+
+		// 从放置物品中移除宠物
+		const newPlacedItems = [...currentIslandState.placed];
+		newPlacedItems.unorderedRemove(petIndex);
+
+		// 将宠物转换为背包物品
+		const petItem = placedPet as PlayerInventoryItem;
+
+		const updatedIslandState = {
+			...currentIslandState,
+			inventory: [...currentIslandState.inventory, petItem],
+			placed: newPlacedItems,
+		};
+
+		return {
+			...state,
+			[playerId]: {
+				...playerState,
+				islands: {
+					...playerState.islands,
+					[playerState.plot.islandId]: updatedIslandState,
+				},
+			},
+		};
+	},
+
+	/**
 	 * 捡起传送带上的蛋并添加到背包.
 	 *
 	 * @param state - 当前状态.
@@ -519,6 +574,38 @@ export const playersSlice = createProducer({} as PlayersState, {
 	 * @param placedItem - 放置的物品.
 	 * @returns 更新后的状态.
 	 */
+	placeItem: (state, playerId: string, placedItem: PlayerPlacedItem): PlayersState => {
+		const playerState = state[playerId];
+		if (!playerState) {
+			return state;
+		}
+
+		const currentIslandState = getCurrentIslandState(playerState);
+		const updatedIslandState = {
+			...currentIslandState,
+			placed: [...currentIslandState.placed, placedItem],
+		};
+
+		return {
+			...state,
+			[playerId]: {
+				...playerState,
+				islands: {
+					...playerState.islands,
+					[playerState.plot.islandId]: updatedIslandState,
+				},
+			},
+		};
+	},
+
+	/**
+	 * 从背包放置物品到当前岛屿.
+	 *
+	 * @param state - 当前状态.
+	 * @param playerId - 玩家ID.
+	 * @param placedItem - 放置的物品.
+	 * @returns 更新后的状态.
+	 */
 	placeItemFromInventory: (
 		state,
 		playerId: string,
@@ -547,6 +634,8 @@ export const playersSlice = createProducer({} as PlayersState, {
 		};
 	},
 
+	// ==================== 玩家管理 ====================
+
 	/**
 	 * 玩家加入游戏 - 初始化玩家状态.
 	 *
@@ -572,8 +661,6 @@ export const playersSlice = createProducer({} as PlayersState, {
 		};
 	},
 
-	// ==================== 玩家管理 ====================
-
 	/**
 	 * 玩家离开游戏 - 清理玩家状态.
 	 *
@@ -594,7 +681,7 @@ export const playersSlice = createProducer({} as PlayersState, {
 	 * @param state - 当前状态.
 	 * @param playerId - 玩家ID.
 	 * @param itemInstanceId - 要移除的物品实例ID.
-	 * @param count
+	 * @param count - 要移除的数量.
 	 * @returns 更新后的状态.
 	 */
 	removeEggFromInventory: (
@@ -696,6 +783,55 @@ export const playersSlice = createProducer({} as PlayersState, {
 	},
 
 	/**
+	 * 从当前岛屿移除放置的蛋.
+	 *
+	 * @param state - 当前状态.
+	 * @param playerId - 玩家ID.
+	 * @param eggInstanceId - 蛋实例ID.
+	 * @returns 更新后的状态.
+	 */
+	removePlacedEgg: (state, playerId: string, eggInstanceId: string): PlayersState => {
+		const playerState = state[playerId];
+		if (!playerState) {
+			return state;
+		}
+
+		const currentIslandState = getCurrentIslandState(playerState);
+		const itemIndex = currentIslandState.placed.findIndex(
+			item => item.instanceId === eggInstanceId,
+		);
+
+		if (itemIndex === -1) {
+			return state;
+		}
+
+		const newPlacedItems = [...currentIslandState.placed];
+		const removedItem = newPlacedItems[itemIndex];
+
+		if (!removedItem) {
+			return state;
+		}
+
+		newPlacedItems.unorderedRemove(itemIndex);
+
+		const updatedIslandState = {
+			...currentIslandState,
+			placed: newPlacedItems,
+		};
+
+		return {
+			...state,
+			[playerId]: {
+				...playerState,
+				islands: {
+					...playerState.islands,
+					[playerState.plot.islandId]: updatedIslandState,
+				},
+			},
+		};
+	},
+
+	/**
 	 * 从当前岛屿移除放置的物品.
 	 *
 	 * @param state - 当前状态.
@@ -732,89 +868,6 @@ export const playersSlice = createProducer({} as PlayersState, {
 				inventory: [...updatedIslandState.inventory, petItem],
 			};
 		}
-
-		return {
-			...state,
-			[playerId]: {
-				...playerState,
-				islands: {
-					...playerState.islands,
-					[playerState.plot.islandId]: updatedIslandState,
-				},
-			},
-		};
-	},
-
-	/**
-	 * 将手持物品放回背包（只有宠物可以放回）.
-	 *
-	 * @param state - 当前状态.
-	 * @param playerId - 玩家ID.
-	 * @returns 更新后的状态.
-	 */
-	returnHeldItemToInventory: (state, playerId: string): PlayersState => {
-		const playerState = state[playerId];
-		if (!playerState) {
-			return state;
-		}
-
-		const currentIslandState = getCurrentIslandState(playerState);
-		const { heldItemInstanceId, inventory } = currentIslandState;
-
-		// 如果没有手持物品，则不操作
-		if (heldItemInstanceId === undefined || heldItemInstanceId === "") {
-			return state;
-		}
-
-		// 查找手持物品
-		const heldItem = inventory.find(item => item.instanceId === heldItemInstanceId);
-		if (!heldItem || !canReturnToInventory(heldItem)) {
-			return state;
-		}
-
-		const updatedIslandState = {
-			...currentIslandState,
-			heldItemInstanceId: undefined,
-			// 物品已经在背包中，不需要移动
-			inventory: [...inventory],
-		};
-
-		return {
-			...state,
-			[playerId]: {
-				...playerState,
-				islands: {
-					...playerState.islands,
-					[playerState.plot.islandId]: updatedIslandState,
-				},
-			},
-		};
-	},
-
-	/**
-	 * 将物品放回背包（只有宠物可以放回）.
-	 *
-	 * @param state - 当前状态.
-	 * @param playerId - 玩家ID.
-	 * @param item - 要放回的物品.
-	 * @returns 更新后的状态.
-	 */
-	returnItemToInventory: (state, playerId: string, item: PlayerInventoryItem): PlayersState => {
-		const playerState = state[playerId];
-		if (!playerState) {
-			return state;
-		}
-
-		// 只有宠物可以放回背包
-		if (!canReturnToInventory(item)) {
-			return state;
-		}
-
-		const currentIslandState = getCurrentIslandState(playerState);
-		const updatedIslandState = {
-			...currentIslandState,
-			inventory: [...currentIslandState.inventory, item],
-		};
 
 		return {
 			...state,

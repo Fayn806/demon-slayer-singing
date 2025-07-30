@@ -50,7 +50,7 @@ export class ConveyorEggComponent extends BaseComponent<ConveyorEggAttributes, C
 		this.setupEggEffects();
 
 		// 监听状态变化
-		this.setupStateListener();
+		// this.setupStateListener();
 	}
 
 	/** @ignore */

@@ -153,12 +153,12 @@ export interface PlayerPet {
 }
 
 export interface PlacedPet extends PlacedData, PlayerPet {
-	/** 已领取收益. */
-	claimedEarnings: number;
-	/** 当前收益. */
-	currentEarnings: number;
 	/** 收益类型. */
 	earningsType: "coins" | "gems";
+	/** 已领取收益. */
+	lastClaimTime: number;
+	/** 当前放置累计收益. */
+	placedEarnings: number;
 }
 
 /** 加成道具类型枚举. */

@@ -1,5 +1,5 @@
 /** 蛋组件的属性接口. */
-export interface PlacedEggAttributes {
+export interface PlacedPetAttributes {
 	/** 物品实例ID. */
 	instanceId: string;
 	/** 玩家ID. */
@@ -7,11 +7,7 @@ export interface PlacedEggAttributes {
 }
 
 /** 蛋模型接口. */
-export interface PlacedEggModel extends Model {
-	/** 广告牌 GUI. */
-	Billboard: BillboardGui;
-	/** 蛋的网格部件. */
-	Egg: MeshPart;
+export interface PlacedPetModel extends Model {
 	/** 主要部件. */
 	PrimaryPart: Part;
 }

@@ -22,6 +22,7 @@ import type { PlotAttributes, PlotFolder } from "types/interfaces/components/plo
 
 import type { ConveyorEggComponent } from "./conveyor-egg-component";
 import type { PlacedEggComponent } from "./placed-egg-component";
+import type { PlacedPetComponent } from "./placed-pet-component";
 
 @Component({
 	refreshAttributes: $NODE_ENV === "development",
@@ -30,7 +31,10 @@ import type { PlacedEggComponent } from "./placed-egg-component";
 export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> implements OnStart {
 	private readonly conveyorEggComponents = new Map<string, ConveyorEggComponent>();
 	private readonly janitor = new Janitor();
-	private readonly placedItemComponents = new Map<string, PlacedEggComponent>();
+	private readonly placedItemComponents = new Map<
+		string,
+		PlacedEggComponent | PlacedPetComponent
+	>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -196,6 +200,15 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 
 			this.createPlacedItem(item);
 		}
+
+		// 清理已放置物品组件
+		for (const [instanceId, component] of pairs(this.placedItemComponents)) {
+			if (!placedItems.some(item => item.instanceId === instanceId)) {
+				this.logger.Verbose(`Removing placed item component for ${instanceId}`);
+				component.destroy();
+				this.placedItemComponents.delete(instanceId);
+			}
+		}
 	}
 
 	/**
@@ -221,10 +234,39 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 			const placedEggComponent = this.components.addComponent<PlacedEggComponent>(clone);
 			placedEggComponent.initialize(this);
 			this.placedItemComponents.set(item.instanceId, placedEggComponent);
-		} else {
-			this.logger.Warn(
-				`Unsupported item type ${item.itemType} for placed item ${item.instanceId}`,
+		} else if (item.itemType === ItemType.Pet) {
+			const petModel = ReplicatedStorage.Assets.Characters.FindFirstChild(
+				"StarterCharacter_" + item.petId,
 			);
+
+			if (!petModel) {
+				this.logger.Warn(`Pet model for ${item.petId} not found`);
+				return;
+			}
+
+			const clone = petModel.Clone() as Model;
+			clone.SetAttribute("instanceId", item.instanceId);
+			clone.SetAttribute("playerId", this.attributes.playerId);
+			clone.Parent = this.instance.Items;
+
+			const humanoidRootPart = clone.WaitForChild("HumanoidRootPart", 3) as
+				| BasePart
+				| undefined;
+			const humanoid = clone.WaitForChild("Humanoid", 3) as Humanoid | undefined;
+			// 设置位置和父级
+			const yOffset =
+				(humanoidRootPart !== undefined ? humanoidRootPart.Size.Y / 2 : 0) +
+				(humanoid ? humanoid.HipHeight : 0);
+			clone.PivotTo(item.location.mul(new CFrame(0, yOffset, 0)));
+
+			if (clone.PrimaryPart) {
+				clone.PrimaryPart.Anchored = true;
+			}
+			// 创建 PlacedEggComponent 实例并初始化
+
+			const placedPetComponent = this.components.addComponent<PlacedPetComponent>(clone);
+			placedPetComponent.initialize(this);
+			this.placedItemComponents.set(item.instanceId, placedPetComponent);
 		}
 	}
 
@@ -249,6 +291,15 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 			}
 
 			this.createConveyorEgg(egg);
+		}
+
+		// 清理已放置物品组件
+		for (const [instanceId, component] of pairs(this.conveyorEggComponents)) {
+			if (!eggs.some(item => item.instanceId === instanceId)) {
+				this.logger.Verbose(`Removing conveyor egg component for ${instanceId}`);
+				component.destroy();
+				this.conveyorEggComponents.delete(instanceId);
+			}
 		}
 	}
 
