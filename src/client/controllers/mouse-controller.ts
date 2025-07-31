@@ -5,14 +5,15 @@ import { Players, RunService, Workspace } from "@rbxts/services";
 
 import { USER_ID } from "client/constants";
 import type { RootStore } from "client/store";
-import { selectHeldItem } from "shared/store/players/selectors";
+import { selectHeldItem, selectPlacedItemById } from "shared/store/players/selectors";
 import type { PlayerPlotState } from "shared/store/players/types";
-import { ItemType, type PlayerInventoryItem } from "shared/types";
+import { ItemType, type PlayerInventoryItem, type PlayerPlacedItem } from "shared/types";
 
 import type { OnPlayerPlotLoaded } from "./plots/plot-controller";
 
 export interface MouseTarget {
 	instance: BasePart;
+	item?: PlayerPlacedItem;
 	raycastResult: RaycastResult;
 }
 
@@ -217,6 +218,19 @@ export class MouseController implements OnPlayerPlotLoaded {
 
 		// 如果目标改变了，触发Signal事件
 		if (previousTarget !== newTarget) {
+			if (newTarget !== undefined) {
+				const instanceId = newTarget.instance.GetAttribute("instanceId");
+				if (instanceId !== undefined) {
+					const item = this.store.getState(
+						selectPlacedItemById(USER_ID, instanceId as string),
+					);
+
+					if (!item) {
+						newTarget.item = item;
+					}
+				}
+			}
+
 			this.onMouseTargetChanged.Fire(newTarget);
 		}
 

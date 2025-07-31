@@ -1112,4 +1112,57 @@ export const playersSlice = createProducer({} as PlayersState, {
 			},
 		};
 	},
+
+	/**
+	 * 更新宠物的收益信息.
+	 *
+	 * @param state - 当前状态.
+	 * @param playerId - 玩家ID.
+	 * @param petInstanceId - 宠物实例ID.
+	 * @param earnings - 新的收益数据.
+	 * @returns 更新后的状态.
+	 */
+	updatePetEarnings: (
+		state,
+		playerId: string,
+		petInstanceId: string,
+		earnings: {
+			currentEarning: number;
+			earningTime: number;
+		},
+	): PlayersState => {
+		const playerState = state[playerId];
+		if (!playerState) {
+			return state;
+		}
+
+		const currentIslandState = getCurrentIslandState(playerState);
+
+		return {
+			...state,
+			[playerId]: {
+				...playerState,
+				islands: {
+					...playerState.islands,
+					[playerState.plot.islandId]: {
+						...currentIslandState,
+						placed: currentIslandState.placed.map(item => {
+							if (
+								item.instanceId === petInstanceId &&
+								item.itemType === ItemType.Pet
+							) {
+								return {
+									...item,
+									currentEarning: earnings.currentEarning,
+									earningTime: earnings.earningTime,
+								};
+							}
+
+							return item;
+						}),
+					},
+				},
+			},
+		};
+	},
 });

@@ -64,6 +64,7 @@ export default style(
 			"**/*.md",
 			"docs/**/*.md",
 			"prompts/**/*.md",
+			"src/shared/configs/*.d.ts",
 
 			// Yaml files
 			"**/*.yaml",

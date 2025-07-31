@@ -15,6 +15,7 @@ import type { PlayerPlotState } from "shared/store/players/types";
 import { ItemType, type PlayerInventoryItem, type PlayerPlacedItem } from "shared/types";
 import {
 	getPlacementAreaFromPart,
+	getRelativePosition,
 	type PlacedItemInfo,
 	type PlacementArea,
 	validateItemPlacement,
@@ -41,9 +42,8 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 	/** 本地玩家的鼠标对象. */
 	private readonly mouse: Mouse;
 	private readonly placedItemInfos: Array<PlacedItemInfo> = [];
-	/** 玩家已放置物品的文件夹缓存. */
-	private readonly playerPlacedItemFolder: Folder | undefined;
 
+	private playerPlacementArea: PlacementArea | undefined = undefined;
 	/** 预览物品的 Part 对象. */
 	private previewPart: Part | undefined;
 	/** 当前目标位置（用于平滑移动预览物品）. */
@@ -175,6 +175,27 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 		}
 	}
 
+	private getPlayerPlacementArea(): PlacementArea {
+		if (this.playerPlacementArea) {
+			return this.playerPlacementArea;
+		}
+
+		// 获取玩家地块位置
+		const playerIndex = this.store.getState(selectPlayerPlotIndex(USER_ID));
+		const plotFolder = Workspace.Main.Plots.WaitForChild(tostring(playerIndex));
+
+		const boundary = plotFolder.WaitForChild("Boundary") as Part;
+
+		const placementArea = getPlacementAreaFromPart(
+			boundary,
+			boundary.Position.Y + boundary.Size.Y / 2,
+		);
+
+		this.playerPlacementArea = placementArea;
+
+		return this.playerPlacementArea;
+	}
+
 	/**
 	 * 处理手持物品的放置逻辑 设置预览系统、位置验证和鼠标交互.
 	 *
@@ -195,15 +216,7 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 		const range = this.getItemRangeByType(heldItem.itemType);
 
 		// 定义放置区域（根据实际地块大小调整）
-		const plotCenter = this.getPlotCenter();
-		const placementArea: PlacementArea = {
-			center: plotCenter,
-			// 地块大小
-			size: new Vector2(91.002, 78),
-			// 使用地块中心的Y坐标作为统一水平面
-			yLevel: plotCenter.Y + 1,
-		};
-
+		const placementArea = this.getPlayerPlacementArea();
 		// 创建预览物品
 		this.createPreviewPart(range);
 
@@ -300,17 +313,6 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 	}
 
 	/**
-	 * 获取地块中心位置.
-	 *
-	 * @returns 地块中心的世界坐标.
-	 */
-	private getPlotCenter(): Vector3 {
-		// 默认位置（临时硬编码）
-		// 将来应该从实际的地块数据中获取
-		return new Vector3(-474.499, 13.459, -1007);
-	}
-
-	/**
 	 * 在指定位置放置物品.
 	 *
 	 * @param item - 要放置的物品.
@@ -320,8 +322,9 @@ export class PlaceItemController implements OnPlayerPlotLoaded {
 		this.logger.Info(`Placing item ${item.instanceId} at position ${position}`);
 		// 将来实现实际的物品放置逻辑
 		// 例如：创建物品模型、设置位置、更新状态等
+		const relativePosition = getRelativePosition(position, this.getPlayerPlacementArea());
 		remotes.plot
-			.placeItem(item.instanceId, new CFrame(position))
+			.placeItem(item.instanceId, new CFrame(relativePosition))
 			.andThen(() => {
 				this.logger.Info(
 					`Successfully placed item ${item.instanceId} at position ${position}`,

@@ -14,6 +14,7 @@ import { isEggMissed } from "shared/util/egg-util";
 import { generateUniqueId } from "shared/util/id-util";
 
 import type { OnPlayerIslandLoad } from "../island-service";
+import type { Configs } from "shared/configs";
 
 @Service({})
 export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
@@ -27,6 +28,7 @@ export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
 	constructor(
 		private readonly logger: Logger,
 		private readonly playerService: PlayerService,
+		private readonly configs: Configs,
 	) {}
 
 	public onStart(): void {
@@ -35,6 +37,8 @@ export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
 				return this.playerBuyConveyorEgg(playerEntity, eggInstanceId);
 			}),
 		);
+
+		print(this.configs.EggsConfig)
 	}
 
 	public onPlayerIslandLoad(playerEntity: PlayerEntity): void {
@@ -256,30 +260,6 @@ export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
 	}
 
 	/**
-	 * 强制立即生成一个蛋（忽略时间间隔）.
-	 *
-	 * @param playerEntity - 玩家实体.
-	 * @param eggId - 蛋类型ID（可选）.
-	 * @returns 生成的蛋对象.
-	 */
-	public forceGenerateEgg(playerEntity: PlayerEntity, eggId?: EggId): ConveyorEgg {
-		const { userId } = playerEntity;
-		this.logger.Info(`Force generating egg for player ${userId}.`);
-
-		const actualEggId: EggId = eggId ?? "Egg1";
-		const conveyorEgg = this.createConveyorEgg(
-			playerEntity,
-			actualEggId,
-			generateUniqueId("conveyorEgg"),
-		);
-
-		store.spawnEggOnConveyor(userId, conveyorEgg);
-		this.logger.Info(`Force generated egg ${conveyorEgg.instanceId} for player ${userId}.`);
-
-		return conveyorEgg;
-	}
-
-	/**
 	 * 创建一个ConveyorEgg对象的通用方法.
 	 *
 	 * @param _playerEntity - 玩家实体.
@@ -452,7 +432,6 @@ export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
 
 	private generatePlayerEgg(playerEntity: PlayerEntity): void {
 		const { userId } = playerEntity;
-		this.logger.Info(`Generating egg for player ${userId}.`);
 
 		const conveyorEgg = this.createConveyorEgg(
 			playerEntity,
@@ -463,7 +442,7 @@ export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
 		// 添加蛋到传送带（会自动更新lastEggGenerationTime）
 		store.spawnEggOnConveyor(userId, conveyorEgg);
 
-		this.logger.Info(`Generated egg ${conveyorEgg.instanceId} for player ${userId}.`);
+		// this.logger.Info(`Generated egg ${conveyorEgg.instanceId} for player ${userId}.`);
 	}
 
 	private playerBuyConveyorEgg(playerEntity: PlayerEntity, eggInstanceId: string): boolean {

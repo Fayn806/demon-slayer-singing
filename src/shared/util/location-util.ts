@@ -346,3 +346,19 @@ export function getOptimalPlacementPosition(
 		math.min(placementArea.size.X, placementArea.size.Y) / 2,
 	);
 }
+
+export function getRelativePosition(worldPosition: Vector3, placementArea: PlacementArea): Vector3 {
+	const localX = worldPosition.X - placementArea.center.X;
+	const localY = worldPosition.Y - placementArea.yLevel;
+	const localZ = worldPosition.Z - placementArea.center.Z;
+
+	return new Vector3(localX, localY, localZ);
+}
+
+export function getWorldPosition(localPosition: Vector3, placementArea: PlacementArea): Vector3 {
+	const worldX = localPosition.X + placementArea.center.X;
+	const worldY = localPosition.Y + placementArea.yLevel;
+	const worldZ = localPosition.Z + placementArea.center.Z;
+
+	return new Vector3(worldX, worldY, worldZ);
+}

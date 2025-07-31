@@ -4,6 +4,7 @@ import { namespace, remote } from "@rbxts/remo";
 export const plotRemote = namespace({
 	buyConveyorEgg: remote<Server, [eggId: string]>().returns<boolean | undefined>(),
 	buyMissedEgg: remote<Server, [eggId: string]>().returns<boolean>(),
+	claimPetEarings: remote<Server, [itemInstanceId: string]>().returns<boolean | undefined>(),
 	expand: remote<Server, [expansionId: string]>().returns<boolean | undefined>(),
 	hatchEgg: remote<Server, [eggInstanceId: string]>().returns<boolean | undefined>(),
 	hatchEggComplete: remote<Server, [eggInstanceId: string]>().returns<boolean | undefined>(),

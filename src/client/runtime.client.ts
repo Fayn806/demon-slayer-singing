@@ -2,6 +2,7 @@ import { Flamework, Modding } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
 import Log from "@rbxts/log";
 
+import { type Configs, configs } from "shared/configs";
 import { GAME_NAME } from "shared/constants";
 import { setupLogger } from "shared/functions/setup-logger";
 
@@ -18,6 +19,7 @@ function start(): void {
 
 	Modding.registerDependency<Logger>(ctor => Log.ForContext(ctor));
 	Modding.registerDependency<RootStore>(() => store);
+	Modding.registerDependency<Configs>(() => configs);
 
 	Flamework.addPaths("src/client/controllers");
 

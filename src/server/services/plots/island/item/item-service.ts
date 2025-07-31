@@ -6,6 +6,7 @@ import { Workspace } from "@rbxts/services";
 import type { PlayerEntity } from "server/services/player/player-entity";
 import type { PlayerService } from "server/services/player/player-service";
 import type { RootStore } from "server/store";
+import type { Configs } from "shared/configs";
 import { remotes } from "shared/remotes";
 import { selectInventoryItemById, selectPlayerState } from "shared/store/players/selectors";
 import { ItemType, type PlacedEgg, type PlacedPet, type PlayerPlacedItem } from "shared/types";
@@ -17,6 +18,7 @@ export class ItemService implements OnStart {
 		private readonly logger: Logger,
 		private readonly store: RootStore,
 		private readonly playerService: PlayerService,
+		private readonly configs: Configs,
 	) {}
 
 	/** @ignore */
@@ -80,10 +82,11 @@ export class ItemService implements OnStart {
 			// 默认值，实际使用时可能需要根据具体逻辑计算
 			placedItem = {
 				eggId: item.eggId,
-				hatchLeftTime: 10,
+				hatchLeftTime: this.configs.EggsConfig[item.eggId].hatchTime,
 				instanceId: generateUniqueId("placedEgg"),
 				itemType: ItemType.Egg,
 				location,
+				luckBonus: 0,
 				mutations: [],
 				placedTime: currentTime,
 				sizeBonus: 0,
@@ -91,17 +94,17 @@ export class ItemService implements OnStart {
 			} as PlacedEgg;
 		} else if (item.itemType === ItemType.Pet) {
 			placedItem = {
+				currentEarning: 0,
 				earningsType: "coins",
+				earningTime: currentTime,
 				eggId: item.eggId,
 				hatchTime: currentTime,
 				instanceId: generateUniqueId("placedPet"),
 				itemType: ItemType.Pet,
-				lastClaimTime: 0,
 				location,
 				luckBonus: item.luckBonus,
 				mutations: item.mutations,
 				petId: item.petId,
-				placedEarnings: 0,
 				placedTime: currentTime,
 				sizeBonus: item.sizeBonus,
 				totalEarnings: item.totalEarnings,
@@ -117,7 +120,7 @@ export class ItemService implements OnStart {
 		this.store.placeItemFromInventory(userId, placedItem);
 		if (item.itemType === ItemType.Egg) {
 			this.store.removeEggFromInventory(userId, itemInstanceId, 1);
-		} else if (item.itemType === ItemType.Pet) {
+		} else {
 			this.store.removeItemFromInventory(userId, itemInstanceId);
 		}
 
@@ -182,19 +185,20 @@ export class ItemService implements OnStart {
 
 		// 删除placedEgg
 		this.store.removePlacedEgg(userId, eggInstanceId);
+		const currentTime = Workspace.GetServerTimeNow();
 		// 添加PlacedPet
 		const newPlacedPet: PlacedPet = {
+			currentEarning: 0,
 			earningsType: "coins",
+			earningTime: currentTime,
 			eggId: egg.eggId,
-			hatchTime: Workspace.GetServerTimeNow(),
+			hatchTime: currentTime,
 			instanceId: generateUniqueId("pet"),
 			itemType: ItemType.Pet,
-			lastClaimTime: 0,
 			location: egg.location,
 			luckBonus: egg.luckBonus,
 			mutations: egg.mutations,
 			petId: "2",
-			placedEarnings: 0,
 			placedTime: Workspace.GetServerTimeNow(),
 			sizeBonus: egg.sizeBonus,
 			totalEarnings: 0,

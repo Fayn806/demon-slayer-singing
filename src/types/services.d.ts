@@ -11,6 +11,11 @@ interface ReplicatedStorage {
 			Egg7: Model;
 			Egg8: Model;
 		};
+		Particles: Folder & {
+			"Collect": Part & {
+				"Attachment": Attachment;
+			};
+		};
 	};
 	"ExpandReserve": Folder & {
 		"1": Folder;

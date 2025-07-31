@@ -2,6 +2,7 @@ import type { OnStart } from "@flamework/core";
 import { Controller } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
 
+import { LocalPlayer } from "client/constants";
 import type { RootStore } from "client/store";
 import { selectHeldItem } from "shared/store/players/selectors";
 import type { PlayerPlotState } from "shared/store/players/types";
@@ -33,6 +34,21 @@ export class PlayerController implements OnStart, OnPlayerPlotLoaded {
 				this.cleanupHeldItem();
 			}
 		});
+	}
+
+	public withPlayerCharacter(
+		callback: (character: Model & { PrimaryPart: BasePart }) => void,
+	): void {
+		const character = LocalPlayer.Character;
+		if (!character) {
+			this.logger.Warn("Player character not found.");
+			return;
+		}
+
+		const humanoidRootPart = character.FindFirstChild("HumanoidRootPart");
+		if (humanoidRootPart !== undefined && character.PrimaryPart !== undefined) {
+			callback(character as Model & { PrimaryPart: BasePart });
+		}
 	}
 
 	private handleHeldEgg(heldItem: PlayerEgg | undefined): void {

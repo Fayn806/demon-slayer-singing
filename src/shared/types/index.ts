@@ -121,11 +121,11 @@ export interface PlacedEgg extends BaseEgg, PlacedData {
 	/** 物品类型. */
 	itemType: ItemType.Egg;
 	/** 幸运加成. */
-	luckBonus?: number;
+	luckBonus: number;
 	/** 变异类型. */
 	mutations: Array<EggMutation>;
 	/** 大小加成. */
-	sizeBonus?: number;
+	sizeBonus: number;
 }
 
 /** 玩家的蛋孵化后宠物实例. */
@@ -153,12 +153,12 @@ export interface PlayerPet {
 }
 
 export interface PlacedPet extends PlacedData, PlayerPet {
+	/** 当前放置累计收益. */
+	currentEarning: number;
 	/** 收益类型. */
 	earningsType: "coins" | "gems";
-	/** 已领取收益. */
-	lastClaimTime: number;
-	/** 当前放置累计收益. */
-	placedEarnings: number;
+	/** 收益时间. */
+	earningTime: number;
 }
 
 /** 加成道具类型枚举. */

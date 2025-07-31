@@ -15,6 +15,12 @@ import {
 } from "shared/store/players/selectors";
 import { ConveyorSpeedMode, type SpeedHistoryEntry } from "shared/store/players/types";
 import { type ConveyorEgg, ItemType, type PlayerPlacedItem } from "shared/types";
+import {
+	getPlacementAreaFromPart,
+	getRelativePosition,
+	getWorldPosition,
+	type PlacementArea,
+} from "shared/util/location-util";
 import { Tag } from "types/enum/tag";
 import type { ConveyorEggModel } from "types/interfaces/components/egg";
 import type { PlacedEggModel } from "types/interfaces/components/placed-egg";
@@ -35,6 +41,7 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 		string,
 		PlacedEggComponent | PlacedPetComponent
 	>();
+	private readonly placementArea: PlacementArea;
 
 	constructor(
 		private readonly logger: Logger,
@@ -42,6 +49,11 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 		private readonly components: Components,
 	) {
 		super();
+
+		this.placementArea = getPlacementAreaFromPart(
+			this.instance.Boundary,
+			this.instance.Boundary.Position.Y + this.instance.Boundary.Size.Y / 2,
+		);
 	}
 
 	/** @ignore */
@@ -76,35 +88,6 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 		}
 
 		return eggModels;
-	}
-
-	/**
-	 * 根据实例ID查找蛋模型.
-	 *
-	 * @param eggInstanceId - 蛋的实例ID.
-	 * @returns 找到的蛋模型，如果未找到则返回 undefined.
-	 */
-	public findEggModel(eggInstanceId: string): ConveyorEggModel | undefined {
-		const eggModel = this.instance.Eggs.FindFirstChild(eggInstanceId);
-		return eggModel?.IsA("Model") === true ? (eggModel as ConveyorEggModel) : undefined;
-	}
-
-	/** 清空所有蛋模型. */
-	public clearAllEggs(): void {
-		for (const [_eggInstanceId, eggComponent] of pairs(this.conveyorEggComponents)) {
-			eggComponent.destroy();
-		}
-
-		this.logger.Info(`Cleared all eggs from plot ${this.attributes.plotIndex}`);
-	}
-
-	/**
-	 * 获取当前蛋模型数量.
-	 *
-	 * @returns 蛋模型数量.
-	 */
-	public getEggCount(): number {
-		return this.getEggModels().size();
 	}
 
 	/**
@@ -143,6 +126,18 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 	public getConveyorSpeedHistory(): Array<SpeedHistoryEntry> {
 		const conveyorState = this.store.getState(selectPlayerConveyor(this.attributes.playerId));
 		return conveyorState?.speedModeHistory ?? [];
+	}
+
+	public getRelativePosition(position: Vector3): Vector3 {
+		return getRelativePosition(position, this.placementArea);
+	}
+
+	public getWorldPosition(relativePosition: Vector3): Vector3 {
+		return getWorldPosition(relativePosition, this.placementArea);
+	}
+
+	public getPlacementArea(): PlacementArea {
+		return this.placementArea;
 	}
 
 	/** 初始化 Plot 系统. */
@@ -228,7 +223,8 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 			clone.SetAttribute("instanceId", item.instanceId);
 			clone.SetAttribute("playerId", this.attributes.playerId);
 			clone.Parent = this.instance.Items;
-			clone.PivotTo(item.location);
+			const worldPosition = this.getWorldPosition(item.location.Position);
+			clone.PivotTo(new CFrame(worldPosition));
 
 			// 创建 PlacedEggComponent 实例并初始化
 			const placedEggComponent = this.components.addComponent<PlacedEggComponent>(clone);
@@ -257,7 +253,12 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 			const yOffset =
 				(humanoidRootPart !== undefined ? humanoidRootPart.Size.Y / 2 : 0) +
 				(humanoid ? humanoid.HipHeight : 0);
-			clone.PivotTo(item.location.mul(new CFrame(0, yOffset, 0)));
+
+			const worldPosition = this.getWorldPosition(item.location.Position);
+
+			humanoid?.Destroy();
+
+			clone.PivotTo(new CFrame(worldPosition).mul(new CFrame(0, yOffset, 0)));
 
 			if (clone.PrimaryPart) {
 				clone.PrimaryPart.Anchored = true;

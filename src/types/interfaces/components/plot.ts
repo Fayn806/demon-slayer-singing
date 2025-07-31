@@ -10,6 +10,8 @@ export interface PlotAttributes {
 export interface PlotFolder extends Folder {
 	/** 主要部件. */
 	BeamPart: Part;
+	/** 主要部件. */
+	Boundary: Part;
 	/** 传送带系统. */
 	Conveyor: {
 		/** 传送带部件. */

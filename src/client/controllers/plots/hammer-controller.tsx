@@ -1,23 +1,30 @@
 import { Controller } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
+import React from "@rbxts/react";
+import { createPortal, createRoot } from "@rbxts/react-roblox";
 import { Workspace } from "@rbxts/services";
 
 import { USER_ID } from "client/constants";
 import type { RootStore } from "client/store";
+import { ExpandGui } from "client/ui/screens/expand/expand-gui";
+import type { Configs } from "shared/configs";
 import { remotes } from "shared/remotes";
 import { selectIsHoldingHammer, selectPlayerPlotIndex } from "shared/store/players/selectors";
 import type { PlayerPlotState } from "shared/store/players/types";
+import { ItemType } from "shared/types";
 
 import type { MouseController, MouseTarget } from "../mouse-controller";
 import type { OnPlayerPlotLoaded } from "./plot-controller";
 
 @Controller({})
 export class HammerController implements OnPlayerPlotLoaded {
+	private readonly expandGuiRoot = createRoot(new Instance("Folder"));
 	private readonly raycastWhitelist: Array<Instance> = [];
 
 	private clickUnsubscribe?: RBXScriptConnection;
 	private currentHighlight?: Highlight;
 	private currentHighlightedItem?: Model;
+	private currentSelectedItem?: Model;
 	private hammerSubscription?: () => void;
 	private targetChangedUnsubscribe?: RBXScriptConnection;
 
@@ -25,6 +32,7 @@ export class HammerController implements OnPlayerPlotLoaded {
 		private readonly logger: Logger,
 		private readonly store: RootStore,
 		private readonly mouseController: MouseController,
+		private readonly configs: Configs,
 	) {}
 
 	public onPlayerPlotLoaded(playerId: string, _plot: PlayerPlotState): void {
@@ -137,6 +145,7 @@ export class HammerController implements OnPlayerPlotLoaded {
 			this.clickUnsubscribe = undefined;
 		}
 
+		// 清除高亮
 		this.clearHighlight();
 	}
 
@@ -146,7 +155,7 @@ export class HammerController implements OnPlayerPlotLoaded {
 	 * @param target - 鼠标指向的目标.
 	 */
 	private handleTargetChanged(target?: MouseTarget): void {
-		if (!target) {
+		if (!target || (target.item && target.item.itemType === ItemType.Egg)) {
 			this.clearHighlight();
 			return;
 		}
@@ -225,9 +234,9 @@ export class HammerController implements OnPlayerPlotLoaded {
 	 * 处理鼠标指向PlayerPlacedItem.
 	 *
 	 * @param item - 指向的物品模型.
-	 * @param _folderType - 物品所在的文件夹类型.
+	 * @param folderType - 物品所在的文件夹类型.
 	 */
-	private handleHover(item: Model, _folderType: "Expand" | "Items"): void {
+	private handleHover(item: Model, folderType: "Expand" | "Items"): void {
 		// 如果目标改变了，更新高亮
 		if (item === this.currentHighlightedItem) {
 			return;
@@ -240,6 +249,14 @@ export class HammerController implements OnPlayerPlotLoaded {
 		this.currentHighlight = this.createHighlight();
 		this.currentHighlightedItem = item;
 		this.currentHighlight.Parent = item;
+
+		if (folderType !== "Expand") {
+			this.expandGuiRoot.unmount();
+			return;
+		}
+
+		const price = this.configs.ExpandConfig[item.Name] ?? 0;
+		this.expandGuiRoot.render(createPortal(<ExpandGui price={price} selected={false} />, item));
 	}
 
 	/**
@@ -249,20 +266,27 @@ export class HammerController implements OnPlayerPlotLoaded {
 	 */
 	private handleExpandItemClick(item: Model): void {
 		this.logger.Info(`Demolishing expand item ${item.Name}`);
-		// 实现拆除逻辑：移除物品、返还资源等
-		remotes.plot.expand
-			.request(item.Name)
-			.andThen(result => {
-				if (result === true) {
-					this.logger.Info(`Successfully demolished expand item ${item.Name}`);
-					// 在这里处理成功拆除后的逻辑
-				} else {
-					this.logger.Warn(`Failed to demolish expand item ${item.Name}`);
-				}
-			})
-			.catch(err => {
-				this.logger.Error(tostring(err));
-			});
+		if (this.currentSelectedItem === item) {
+			// 实现拆除逻辑：移除物品、返还资源等
+			remotes.plot.expand
+				.request(item.Name)
+				.andThen(result => {
+					if (result === true) {
+						this.logger.Info(`Successfully demolished expand item ${item.Name}`);
+						// 在这里处理成功拆除后的逻辑
+					} else {
+						this.logger.Warn(`Failed to demolish expand item ${item.Name}`);
+					}
+				})
+				.catch(err => {
+					this.logger.Error(tostring(err));
+				});
+			return;
+		}
+
+		this.currentSelectedItem = item;
+		const price = this.configs.ExpandConfig[item.Name] ?? 0;
+		this.expandGuiRoot.render(createPortal(<ExpandGui price={price} selected={true} />, item));
 	}
 
 	/**
@@ -303,5 +327,8 @@ export class HammerController implements OnPlayerPlotLoaded {
 		}
 
 		this.currentHighlightedItem = undefined;
+		this.currentSelectedItem = undefined;
+
+		this.expandGuiRoot.unmount();
 	}
 }

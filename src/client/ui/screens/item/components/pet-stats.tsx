@@ -10,6 +10,7 @@ import { useRem } from "client/ui/hooks";
 import { generateColorSequence } from "client/utils/color-utils";
 import { selectPlacedItemById } from "shared/store/players/selectors";
 import { ItemType } from "shared/types";
+import { calculateEarnings } from "shared/util/calculate-utils/earning";
 
 interface PetStatsProps {
 	/** 假设这是从某处获取的稀有度. */
@@ -30,16 +31,16 @@ export function PetStats(props: PetStatsProps): React.ReactNode {
 	const coinLabelGradient = generateColorSequence([palette.peach, Color3.fromRGB(0, 255, 0)]);
 	const rarityGradient = generateColorSequence([palette.white, palette.subtext0]);
 
-	const { lastClaimTime, placedTime } = placedPet;
+	const { currentEarning, earningTime, placedTime } = placedPet;
 
 	// 这里可以根据宠物的属性来计算金币产出等信息
-	const currentEarning = timer.value.map(() => {
+	const earning = timer.value.map(() => {
 		// 假设每秒产出10金币
-		const lastClaim = math.max(lastClaimTime, placedTime);
+		const lastClaim = math.max(earningTime, placedTime);
 		const current = Workspace.GetServerTimeNow();
 		const seconds = math.floor(math.clamp(current - lastClaim, 0, current - placedTime));
-		const earningPerSecond = 10;
-		return `$${math.floor(earningPerSecond * seconds)}`;
+		const earningPerSecond = calculateEarnings(6, 1, 1);
+		return `$${math.floor(earningPerSecond * seconds) + currentEarning}`;
 	});
 
 	return (
@@ -107,7 +108,7 @@ export function PetStats(props: PetStatsProps): React.ReactNode {
 							TextScaled: true,
 						}}
 						StrokeSize={rem(2, "pixel")}
-						Text={currentEarning}
+						Text={earning}
 						TextColor={palette.white}
 					>
 						<uigradient Color={coinLabelGradient} Rotation={90} />

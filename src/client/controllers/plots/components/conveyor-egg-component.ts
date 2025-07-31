@@ -38,8 +38,6 @@ export class ConveyorEggComponent extends BaseComponent<ConveyorEggAttributes, C
 	public initialize(plotComponent: PlotComponent): void {
 		this.plotComponent = plotComponent;
 
-		this.logger.Info(`Egg component started for ${this.instance.GetFullName()}`);
-
 		// 设置点击事件
 		this.setupInteraction();
 
@@ -221,16 +219,16 @@ export class ConveyorEggComponent extends BaseComponent<ConveyorEggAttributes, C
 		this.logger.Verbose(`Setting up egg effects for ${this.attributes.instanceId}`);
 
 		// 1. 旋转特效
-		this.setupRotationEffect();
+		// this.setupRotationEffect();
 
 		// 2. 发光特效
-		this.setupGlowEffect();
+		// this.setupGlowEffect();
 
 		// 3. 漂浮特效
-		this.setupFloatingEffect();
+		// this.setupFloatingEffect();
 
 		// 4. 粒子特效
-		this.setupParticleEffects();
+		// this.setupParticleEffects();
 	}
 
 	/** 设置旋转特效. */
