@@ -5,16 +5,16 @@ import { Workspace } from "@rbxts/services";
 import type { PlayerEntity } from "server/services/player/player-entity";
 import type { PlayerService } from "server/services/player/player-service";
 import { store } from "server/store";
+import type { Configs } from "shared/configs";
 import { CONVEYOR_CONSTANTS, LOOP_DURATION } from "shared/constants/game";
 import { remotes } from "shared/remotes";
 import type { IslandState, PlayerState } from "shared/store/players/types";
 import type { ConveyorEgg, EggId, MissedEgg } from "shared/types";
-import { EggType, ItemType } from "shared/types";
+import { EggMutation, ItemType } from "shared/types";
 import { isEggMissed } from "shared/util/egg-util";
 import { generateUniqueId } from "shared/util/id-util";
 
 import type { OnPlayerIslandLoad } from "../island-service";
-import type { Configs } from "shared/configs";
 
 @Service({})
 export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
@@ -38,7 +38,7 @@ export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
 			}),
 		);
 
-		print(this.configs.EggsConfig)
+		print(this.configs.EggsConfig);
 	}
 
 	public onPlayerIslandLoad(playerEntity: PlayerEntity): void {
@@ -281,8 +281,8 @@ export class ConveyorEggService implements OnStart, OnPlayerIslandLoad {
 			instanceId,
 			itemType: ItemType.Egg,
 			moveStartTime: currentTime + CONVEYOR_CONSTANTS.EGG_MOVE_DELAY,
+			mutations: [EggMutation.Normal],
 			spawnTime: currentTime,
-			type: EggType.Normal,
 		};
 
 		// 应用自定义属性

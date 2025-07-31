@@ -6,7 +6,7 @@ import { USER_ID } from "client/constants";
 import { store } from "client/store";
 import { RemProvider } from "client/ui/providers/rem-provider";
 import { remotes } from "shared/remotes";
-import { EggType, type PlayerEgg } from "shared/types";
+import { EggMutation, type PlayerEgg } from "shared/types";
 
 import { Inventory } from "./inventory";
 
@@ -17,153 +17,17 @@ export = hoarcekat(() => {
 	store.addItemToInventory(USER_ID, {
 		count: 1,
 		eggId: "Egg1",
-		instanceId: EggType.Normal + "_Egg1",
+		instanceId: EggMutation.Normal + "_Egg1",
 		itemType: "egg",
-		type: EggType.Normal,
+		mutations: [EggMutation.Normal],
 	} as PlayerEgg);
 
 	store.addItemToInventory(USER_ID, {
 		count: 1,
 		eggId: "Egg1",
-		instanceId: EggType.Normal + "_Egg1",
+		instanceId: EggMutation.Normal + "_Egg1",
 		itemType: "egg",
-		type: EggType.Normal,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg1",
-		instanceId: EggType.Normal + "_Egg1",
-		itemType: "egg",
-		type: EggType.Normal,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg2",
-		instanceId: EggType.Normal + "_Egg2",
-		itemType: "egg",
-		type: EggType.Normal,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg3",
-		instanceId: EggType.Normal + "_Egg3",
-		itemType: "egg",
-		type: EggType.Normal,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg4",
-		instanceId: EggType.Normal + "_Egg4",
-		itemType: "egg",
-		type: EggType.Normal,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg5",
-		instanceId: EggType.Normal + "_Egg5",
-		itemType: "egg",
-		type: EggType.Normal,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg6",
-		instanceId: EggType.Normal + "_Egg6",
-		itemType: "egg",
-		type: EggType.Normal,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg7",
-		instanceId: EggType.Normal + "_Egg7",
-		itemType: "egg",
-		type: EggType.Normal,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg8",
-		instanceId: EggType.Normal + "_Egg8",
-		itemType: "egg",
-		type: EggType.Normal,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg1",
-		instanceId: EggType.Golden + "_Egg1",
-		itemType: "egg",
-		type: EggType.Golden,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg1",
-		instanceId: EggType.Golden + "_Egg1",
-		itemType: "egg",
-		type: EggType.Golden,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg2",
-		instanceId: EggType.Golden + "_Egg2",
-		itemType: "egg",
-		type: EggType.Golden,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg3",
-		instanceId: EggType.Golden + "_Egg3",
-		itemType: "egg",
-		type: EggType.Golden,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg4",
-		instanceId: EggType.Golden + "_Egg4",
-		itemType: "egg",
-		type: EggType.Golden,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg5",
-		instanceId: EggType.Golden + "_Egg5",
-		itemType: "egg",
-		type: EggType.Golden,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg6",
-		instanceId: EggType.Golden + "_Egg6",
-		itemType: "egg",
-		type: EggType.Golden,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg7",
-		instanceId: EggType.Golden + "_Egg7",
-		itemType: "egg",
-		type: EggType.Golden,
-	} as PlayerEgg);
-
-	store.addItemToInventory(USER_ID, {
-		count: 1,
-		eggId: "Egg8",
-		instanceId: EggType.Golden + "_Egg8",
-		itemType: "egg",
-		type: EggType.Golden,
+		mutations: [EggMutation.Normal],
 	} as PlayerEgg);
 
 	remotes.plot.switchHeldItemInstanceId.test.handleRequest(itemInstanceId => {

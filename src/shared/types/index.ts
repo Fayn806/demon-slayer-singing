@@ -36,15 +36,11 @@ export enum EggRarity {
 	Celestial = 8,
 }
 
-/** 蛋类型枚举. */
-export enum EggType {
+/** 蛋变异类型枚举. */
+export enum EggMutation {
 	Diamond = "diamond",
 	Golden = "golden",
 	Normal = "normal",
-}
-
-/** 蛋变异类型枚举. */
-export enum EggMutation {
 	Rainbow = "rainbow",
 	Shiny = "shiny",
 }
@@ -79,7 +75,7 @@ export interface BaseEgg {
 	/** 蛋的唯一标识符. */
 	eggId: EggId;
 	/** 蛋的类型. */
-	type: EggType;
+	mutations: Array<EggMutation>;
 }
 
 export interface ConveyorEgg extends BaseEgg {
@@ -122,8 +118,6 @@ export interface PlacedEgg extends BaseEgg, PlacedData {
 	itemType: ItemType.Egg;
 	/** 幸运加成. */
 	luckBonus: number;
-	/** 变异类型. */
-	mutations: Array<EggMutation>;
 	/** 大小加成. */
 	sizeBonus: number;
 }
@@ -148,8 +142,6 @@ export interface PlayerPet {
 	sizeBonus?: number;
 	/** 总收益. */
 	totalEarnings: number;
-	/** 蛋的类型. */
-	type: EggType;
 }
 
 export interface PlacedPet extends PlacedData, PlayerPet {

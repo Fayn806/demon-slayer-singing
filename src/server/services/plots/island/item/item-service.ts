@@ -87,10 +87,9 @@ export class ItemService implements OnStart {
 				itemType: ItemType.Egg,
 				location,
 				luckBonus: 0,
-				mutations: [],
+				mutations: item.mutations,
 				placedTime: currentTime,
 				sizeBonus: 0,
-				type: item.type,
 			} as PlacedEgg;
 		} else if (item.itemType === ItemType.Pet) {
 			placedItem = {
@@ -108,7 +107,6 @@ export class ItemService implements OnStart {
 				placedTime: currentTime,
 				sizeBonus: item.sizeBonus,
 				totalEarnings: item.totalEarnings,
-				type: item.type,
 			} as PlacedPet;
 		} else {
 			this.logger.Warn(`Item type ${item.itemType} is not supported for placement.`);
@@ -202,7 +200,6 @@ export class ItemService implements OnStart {
 			placedTime: Workspace.GetServerTimeNow(),
 			sizeBonus: egg.sizeBonus,
 			totalEarnings: 0,
-			type: egg.type,
 		};
 		// 将新宠物放置到玩家的岛屿上
 		this.store.placeItem(userId, newPlacedPet);

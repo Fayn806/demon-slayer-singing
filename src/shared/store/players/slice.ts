@@ -117,7 +117,7 @@ function addEggToInventory(
 		return (
 			items.itemType === ItemType.Egg &&
 			items.eggId === newEgg.eggId &&
-			items.type === newEgg.type
+			items.mutations === newEgg.mutations
 		);
 	});
 
@@ -475,7 +475,7 @@ export const playersSlice = createProducer({} as PlayersState, {
 			eggId: conveyorEgg.eggId,
 			instanceId: ItemType.Egg + "_" + conveyorEgg.eggId,
 			itemType: ItemType.Egg,
-			type: conveyorEgg.type,
+			mutations: conveyorEgg.mutations,
 		};
 
 		// 使用辅助函数处理背包叠加逻辑
@@ -539,7 +539,7 @@ export const playersSlice = createProducer({} as PlayersState, {
 			eggId: missedEgg.eggId,
 			instanceId: ItemType.Egg + "_" + missedEgg.eggId,
 			itemType: ItemType.Egg,
-			type: missedEgg.type,
+			mutations: missedEgg.mutations,
 		};
 
 		// 使用辅助函数处理背包叠加逻辑

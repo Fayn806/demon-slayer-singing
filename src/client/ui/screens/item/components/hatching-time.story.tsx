@@ -5,7 +5,7 @@ import { ReflexProvider } from "@rbxts/react-reflex";
 import { store } from "client/store";
 import { Layer } from "client/ui/components/primitive";
 import { RemProvider } from "client/ui/providers/rem-provider";
-import { EggType } from "shared/types";
+import { EggMutation } from "shared/types";
 
 import { HatchingTime } from "./hatching-time";
 
@@ -21,7 +21,7 @@ export = hoarcekat(() => {
 						SortOrder={Enum.SortOrder.LayoutOrder}
 						VerticalAlignment={Enum.VerticalAlignment.Center}
 					/>
-					<HatchingTime eggType={EggType.Normal} leftTime={10} maxTime={10} />
+					<HatchingTime eggMutations={[EggMutation.Normal]} leftTime={10} maxTime={10} />
 				</Layer>
 			</ReflexProvider>
 		</RemProvider>

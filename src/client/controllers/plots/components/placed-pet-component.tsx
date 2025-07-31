@@ -12,13 +12,13 @@ import { $NODE_ENV } from "rbxts-transform-env";
 import { remotes } from "shared/remotes";
 import { selectPlacedItemById } from "shared/store/players/selectors";
 import type { PlacedPet } from "shared/types";
+import { calculateEarnings } from "shared/util/calculate-utils/earning";
 import CollisionGroup from "types/enum/collision-group";
 import { Tag } from "types/enum/tag";
 import type { PlacedPetAttributes, PlacedPetModel } from "types/interfaces/components/placed-pet";
 
 import type { PlayerController } from "../player-controller";
 import type { PlotComponent } from "./plot-component";
-import { calculateEarnings } from "shared/util/calculate-utils/earning";
 
 @Component({
 	refreshAttributes: $NODE_ENV === "development",
@@ -88,12 +88,9 @@ export class PlacedPetComponent extends BaseComponent<PlacedPetAttributes, Place
 		if (!placedItem) {
 			return 0;
 		}
-		
 
 		const { currentEarning, earningTime } = placedItem;
-		const earning = currentEarning + calculateEarnings(6, 1, 1, earningTime);
-
-		return earning;
+		return currentEarning + calculateEarnings(6, 1, 1, earningTime);
 	}
 
 	private setupStatsGui(): void {
@@ -208,7 +205,9 @@ export class PlacedPetComponent extends BaseComponent<PlacedPetAttributes, Place
 	}
 
 	private showClaimedEffect(currentEarning: number | undefined): void {
-		const effectPart = ReplicatedStorage.Assets.Particles.WaitForChild("Collect", 1) as Part | undefined;
+		const effectPart = ReplicatedStorage.Assets.Particles.WaitForChild("Collect", 1) as
+			| Part
+			| undefined;
 		if (!effectPart) {
 			this.logger.Warn("Collect effect part not found.");
 			return;

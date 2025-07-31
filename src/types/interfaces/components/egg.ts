@@ -10,10 +10,6 @@ export interface ConveyorEggAttributes {
 
 /** 蛋模型接口. */
 export interface ConveyorEggModel extends Model {
-	/** 广告牌 GUI. */
-	Billboard: BillboardGui;
-	/** 可选的点击检测器. */
-	ClickDetector?: ClickDetector;
 	/** 蛋的网格部件. */
 	Egg: MeshPart;
 	/** 主要部件. */

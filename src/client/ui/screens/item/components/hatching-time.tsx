@@ -6,7 +6,7 @@ import { Frame, TextLabel } from "client/ui/components/primitive";
 import { Outline } from "client/ui/components/primitive/outline";
 import { useRem } from "client/ui/hooks";
 import { generateColorSequence } from "client/utils/color-utils";
-import type { EggType } from "shared/types";
+import type { EggMutation } from "shared/types";
 
 export function HatchingCD({
 	leftTime,
@@ -89,11 +89,11 @@ export function HatchingCD({
 }
 
 export function HatchingTime({
-	eggType,
+	eggMutations,
 	leftTime,
 	maxTime,
 }: {
-	eggType: EggType;
+	eggMutations: Array<EggMutation>;
 	leftTime: number;
 	maxTime: number;
 }): React.ReactNode {
@@ -117,7 +117,7 @@ export function HatchingTime({
 					TextScaled: true,
 				}}
 				StrokeSize={rem(2, "pixel")}
-				Text={tostring(eggType).upper()}
+				Text={eggMutations.join(" ")}
 				TextColor={palette.white}
 			/>
 		</>

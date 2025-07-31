@@ -1,12 +1,17 @@
 import { BaseComponent, Component } from "@flamework/components";
 import { Janitor } from "@rbxts/janitor";
 import type { Logger } from "@rbxts/log";
+import React from "@rbxts/react";
+import { createPortal, createRoot } from "@rbxts/react-roblox";
 import { RunService, TweenService } from "@rbxts/services";
 
 import type { RootStore } from "client/store";
+import { ConveyorEggGui } from "client/ui/screens/egg/conveyor-egg-gui";
 import { $NODE_ENV } from "rbxts-transform-env";
+import type { Configs } from "shared/configs";
 import { remotes } from "shared/remotes";
 import { selectConveyorEggById } from "shared/store/players/selectors";
+import { EggRarity } from "shared/types";
 import { calculateEggProgress } from "shared/util/egg-util";
 import { Tag } from "types/enum/tag";
 
@@ -21,6 +26,7 @@ import type { PlotComponent } from "./plot-component";
 	tag: Tag.Egg,
 })
 export class ConveyorEggComponent extends BaseComponent<ConveyorEggAttributes, ConveyorEggModel> {
+	private readonly guiRoot = createRoot(new Instance("Folder"));
 	private readonly janitor = new Janitor();
 
 	private effectConnections: Array<RBXScriptConnection> = [];
@@ -31,6 +37,7 @@ export class ConveyorEggComponent extends BaseComponent<ConveyorEggAttributes, C
 	constructor(
 		private readonly logger: Logger,
 		private readonly store: RootStore,
+		private readonly configs: Configs,
 	) {
 		super();
 	}
@@ -49,6 +56,9 @@ export class ConveyorEggComponent extends BaseComponent<ConveyorEggAttributes, C
 
 		// 监听状态变化
 		// this.setupStateListener();
+
+		// 设置GUI
+		this.setupGui();
 	}
 
 	/** @ignore */
@@ -91,6 +101,40 @@ export class ConveyorEggComponent extends BaseComponent<ConveyorEggAttributes, C
 		});
 
 		this.janitor.Add(proximityPrompt);
+	}
+
+	/** 设置gui. */
+	private setupGui(): void {
+		const eggItem = this.store.getState(
+			selectConveyorEggById(this.attributes.playerId, this.attributes.instanceId),
+		);
+
+		if (!eggItem) {
+			this.logger.Warn(
+				`Egg with instance ID ${this.attributes.instanceId} not found in state.`,
+			);
+			return;
+		}
+
+		const eggConfig = this.configs.EggsConfig[eggItem.eggId];
+
+		const { name, cost } = eggConfig;
+
+		this.guiRoot.render(
+			createPortal(
+				<ConveyorEggGui
+					cost={cost}
+					eggName={name}
+					mutations={[]}
+					rarity={EggRarity.Common}
+				/>,
+				this.instance,
+			),
+		);
+
+		this.janitor.Add(() => {
+			this.guiRoot.unmount();
+		});
 	}
 
 	/** 处理蛋被点击. */

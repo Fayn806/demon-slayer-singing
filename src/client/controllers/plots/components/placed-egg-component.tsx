@@ -85,6 +85,7 @@ export class PlacedEggComponent extends BaseComponent<PlacedEggAttributes, Place
 			createPortal(
 				<RemProvider key="rem-provider">
 					<HatchingGui
+						eggMutations={placedEgg.mutations}
 						leftTime={placedTime + hatchLeftTime - currentTime}
 						maxTime={hatchLeftTime}
 					/>

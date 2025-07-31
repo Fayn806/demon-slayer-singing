@@ -1,16 +1,20 @@
 import React from "@rbxts/react";
 
-import { EggType } from "shared/types";
+import type { EggMutation } from "shared/types";
 
 import { HatchingTime } from "./components/hatching-time";
 
 interface HatchingGuiProps {
-	eggType?: EggType;
+	eggMutations: Array<EggMutation>;
 	leftTime: number;
 	maxTime: number;
 }
 
-export function HatchingGui({ eggType, leftTime, maxTime }: HatchingGuiProps): React.ReactNode {
+export function HatchingGui({
+	eggMutations,
+	leftTime,
+	maxTime,
+}: HatchingGuiProps): React.ReactNode {
 	return (
 		<billboardgui
 			AlwaysOnTop={true}
@@ -27,11 +31,7 @@ export function HatchingGui({ eggType, leftTime, maxTime }: HatchingGuiProps): R
 				SortOrder={Enum.SortOrder.LayoutOrder}
 				VerticalAlignment={Enum.VerticalAlignment.Center}
 			/>
-			<HatchingTime
-				eggType={eggType ?? EggType.Normal}
-				leftTime={leftTime}
-				maxTime={maxTime}
-			/>
+			<HatchingTime eggMutations={eggMutations} leftTime={leftTime} maxTime={maxTime} />
 		</billboardgui>
 	);
 }
