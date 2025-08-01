@@ -8,8 +8,6 @@ export interface PlacedEggAttributes {
 
 /** 蛋模型接口. */
 export interface PlacedEggModel extends Model {
-	/** 广告牌 GUI. */
-	Billboard: BillboardGui;
 	/** 蛋的网格部件. */
 	Egg: MeshPart;
 	/** 主要部件. */

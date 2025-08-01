@@ -1,5 +1,6 @@
 /** 已放置物品的信息. */
 export interface PlacedItemInfo {
+	/** 是相对位置。计算的时候需要转换为世界坐标。. */
 	position: Vector3;
 	range: number;
 }
@@ -43,15 +44,20 @@ export function getXZDistance(position1: Vector3, position2: Vector3): number {
  * @param targetPosition - 目标位置.
  * @param targetRange - 目标物品的范围.
  * @param placedItems - 已放置的物品列表.
+ * @param placementArea - 可选的放置区域信息（如果有特定区域限制）.
  * @returns 是否存在冲突.
  */
 export function hasCollisionWithPlacedItems(
 	targetPosition: Vector3,
 	targetRange: number,
 	placedItems: Array<PlacedItemInfo>,
+	placementArea: PlacementArea,
 ): boolean {
 	for (const placedItem of placedItems) {
-		const distance = getXZDistance(targetPosition, placedItem.position);
+		const distance = getXZDistance(
+			targetPosition,
+			getWorldPosition(placedItem.position, placementArea),
+		);
 		const minDistance = targetRange + placedItem.range;
 
 		if (distance < minDistance) {
@@ -185,11 +191,10 @@ export function clampPositionToBounds(
 /**
  * 验证物品是否可以在指定位置放置.
  *
- * @param targetPosition - 目标位置.
  * @param itemInfo - 待放置的物品信息.
  * @param placedItems - 已放置的物品列表.
  * @param placementArea - 允许的放置区域.
- * @param lockedPlacementArea
+ * @param lockedPlacementArea - 可选的锁定放置区域列表.
  * @returns 放置验证结果.
  */
 export function validateItemPlacement(
@@ -214,7 +219,12 @@ export function validateItemPlacement(
 		: clampPositionToBounds(adjustedPosition, itemRange, placementArea);
 
 	// 检查最终位置是否与已放置的物品冲突
-	const hasCollision = hasCollisionWithPlacedItems(clampedPosition, itemRange, placedItems);
+	const hasCollision = hasCollisionWithPlacedItems(
+		clampedPosition,
+		itemRange,
+		placedItems,
+		placementArea,
+	);
 
 	// 检查是否与锁定区域重叠
 	const hasLockedOverlap = lockedPlacementArea

@@ -204,7 +204,7 @@ export class PlacedPetComponent extends BaseComponent<PlacedPetAttributes, Place
 		this.showClaimedEffect(currentEarning);
 	}
 
-	private showClaimedEffect(currentEarning: number | undefined): void {
+	private showClaimedEffect(_currentEarning: number | undefined): void {
 		const effectPart = ReplicatedStorage.Assets.Particles.WaitForChild("Collect", 1) as
 			| Part
 			| undefined;

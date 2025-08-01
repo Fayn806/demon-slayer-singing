@@ -164,8 +164,8 @@ export enum BoosterType {
 
 /** 玩家的加成道具. */
 export interface PlayerBooster {
-	/** 加成类型. */
-	boosterType: BoosterType;
+	/** 物品id. */
+	boosterId: string;
 	/** 道具ID. */
 	instanceId: string;
 	/** 物品类型. */
@@ -176,6 +176,8 @@ export interface PlayerBooster {
 export interface PlacedBooster extends PlacedData, PlayerBooster {
 	/** 物品类型. */
 	itemType: ItemType.Booster;
+	/** 当前加成剩余时间（秒）. */
+	remainingTime: number;
 }
 
 export interface PlayerHammer {

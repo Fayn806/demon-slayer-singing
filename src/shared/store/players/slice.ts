@@ -117,7 +117,7 @@ function addEggToInventory(
 		return (
 			items.itemType === ItemType.Egg &&
 			items.eggId === newEgg.eggId &&
-			items.mutations === newEgg.mutations
+			items.mutations[0] === newEgg.mutations[0]
 		);
 	});
 

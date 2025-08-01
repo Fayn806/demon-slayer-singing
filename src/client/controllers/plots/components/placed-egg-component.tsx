@@ -35,7 +35,6 @@ export class PlacedEggComponent extends BaseComponent<PlacedEggAttributes, Place
 	) {
 		super();
 		this.guiRoot = createRoot(new Instance("Folder"));
-		this.instance.Billboard.Destroy();
 	}
 
 	public initialize(plotComponent: PlotComponent): void {
@@ -77,7 +76,7 @@ export class PlacedEggComponent extends BaseComponent<PlacedEggAttributes, Place
 			return;
 		}
 
-		const { hatchLeftTime, placedTime } = placedEgg;
+		const { hatchLeftTime, mutations, placedTime } = placedEgg;
 		const currentTime = Workspace.GetServerTimeNow();
 		const leftTime = placedTime + hatchLeftTime - currentTime;
 
@@ -85,7 +84,7 @@ export class PlacedEggComponent extends BaseComponent<PlacedEggAttributes, Place
 			createPortal(
 				<RemProvider key="rem-provider">
 					<HatchingGui
-						eggMutations={placedEgg.mutations}
+						eggMutations={mutations}
 						leftTime={placedTime + hatchLeftTime - currentTime}
 						maxTime={hatchLeftTime}
 					/>
@@ -256,8 +255,10 @@ export class PlacedEggComponent extends BaseComponent<PlacedEggAttributes, Place
 				}
 
 				// 尝试找到对应的模型
-				const selectedModel = charactersFolder.FindFirstChild(selectedCharacterId);
-				if (!selectedModel?.IsA("Model")) {
+				const selectedModel = charactersFolder.FindFirstChild(selectedCharacterId) as
+					| Model
+					| undefined;
+				if (selectedModel === undefined) {
 					this.logger.Warn(
 						`Character model ${selectedCharacterId} not found in Characters folder or is not a Model.`,
 					);

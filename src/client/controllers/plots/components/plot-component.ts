@@ -14,7 +14,13 @@ import {
 	selectPlayerConveyor,
 } from "shared/store/players/selectors";
 import { ConveyorSpeedMode, type SpeedHistoryEntry } from "shared/store/players/types";
-import { type ConveyorEgg, ItemType, type PlayerPlacedItem } from "shared/types";
+import {
+	type ConveyorEgg,
+	ItemType,
+	type PlacedEgg,
+	type PlacedPet,
+	type PlayerPlacedItem,
+} from "shared/types";
 import {
 	getPlacementAreaFromPart,
 	getRelativePosition,
@@ -213,62 +219,68 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 	 */
 	private createPlacedItem(item: PlayerPlacedItem): void {
 		if (item.itemType === ItemType.Egg) {
-			const eggModel = ReplicatedStorage.Assets.Eggs.FindFirstChild(item.eggId);
-			if (!eggModel) {
-				this.logger.Warn(`Egg model ${item.eggId} not found`);
-				return;
-			}
-
-			const clone = eggModel.Clone() as PlacedEggModel;
-			clone.SetAttribute("instanceId", item.instanceId);
-			clone.SetAttribute("playerId", this.attributes.playerId);
-			clone.Parent = this.instance.Items;
-			const worldPosition = this.getWorldPosition(item.location.Position);
-			clone.PivotTo(new CFrame(worldPosition));
-
-			// 创建 PlacedEggComponent 实例并初始化
-			const placedEggComponent = this.components.addComponent<PlacedEggComponent>(clone);
-			placedEggComponent.initialize(this);
-			this.placedItemComponents.set(item.instanceId, placedEggComponent);
+			this.createPlacedEgg(item);
 		} else if (item.itemType === ItemType.Pet) {
-			const petModel = ReplicatedStorage.Assets.Characters.FindFirstChild(
-				"StarterCharacter_" + item.petId,
-			);
-
-			if (!petModel) {
-				this.logger.Warn(`Pet model for ${item.petId} not found`);
-				return;
-			}
-
-			const clone = petModel.Clone() as Model;
-			clone.SetAttribute("instanceId", item.instanceId);
-			clone.SetAttribute("playerId", this.attributes.playerId);
-			clone.Parent = this.instance.Items;
-
-			const humanoidRootPart = clone.WaitForChild("HumanoidRootPart", 3) as
-				| BasePart
-				| undefined;
-			const humanoid = clone.WaitForChild("Humanoid", 3) as Humanoid | undefined;
-			// 设置位置和父级
-			const yOffset =
-				(humanoidRootPart !== undefined ? humanoidRootPart.Size.Y / 2 : 0) +
-				(humanoid ? humanoid.HipHeight : 0);
-
-			const worldPosition = this.getWorldPosition(item.location.Position);
-
-			humanoid?.Destroy();
-
-			clone.PivotTo(new CFrame(worldPosition).mul(new CFrame(0, yOffset, 0)));
-
-			if (clone.PrimaryPart) {
-				clone.PrimaryPart.Anchored = true;
-			}
-			// 创建 PlacedEggComponent 实例并初始化
-
-			const placedPetComponent = this.components.addComponent<PlacedPetComponent>(clone);
-			placedPetComponent.initialize(this);
-			this.placedItemComponents.set(item.instanceId, placedPetComponent);
+			this.createPlacedPet(item);
 		}
+	}
+
+	private createPlacedEgg(item: PlacedEgg): void {
+		const eggModel = ReplicatedStorage.Assets.Eggs.FindFirstChild(item.eggId);
+		if (!eggModel) {
+			this.logger.Warn(`Egg model ${item.eggId} not found`);
+			return;
+		}
+
+		const clone = eggModel.Clone() as PlacedEggModel;
+		clone.SetAttribute("instanceId", item.instanceId);
+		clone.SetAttribute("playerId", this.attributes.playerId);
+		clone.Parent = this.instance.Items;
+		const worldPosition = this.getWorldPosition(item.location.Position);
+		clone.PivotTo(new CFrame(worldPosition));
+
+		// 创建 PlacedEggComponent 实例并初始化
+		const placedEggComponent = this.components.addComponent<PlacedEggComponent>(clone);
+		placedEggComponent.initialize(this);
+		this.placedItemComponents.set(item.instanceId, placedEggComponent);
+	}
+
+	private createPlacedPet(item: PlacedPet): void {
+		const petModel = ReplicatedStorage.Assets.Characters.FindFirstChild(
+			"StarterCharacter_" + item.petId,
+		);
+
+		if (!petModel) {
+			this.logger.Warn(`Pet model for ${item.petId} not found`);
+			return;
+		}
+
+		const clone = petModel.Clone() as Model;
+		clone.SetAttribute("instanceId", item.instanceId);
+		clone.SetAttribute("playerId", this.attributes.playerId);
+		clone.Parent = this.instance.Items;
+
+		const humanoidRootPart = clone.WaitForChild("HumanoidRootPart", 3) as BasePart | undefined;
+		const humanoid = clone.WaitForChild("Humanoid", 3) as Humanoid | undefined;
+		// 设置位置和父级
+		const yOffset =
+			(humanoidRootPart !== undefined ? humanoidRootPart.Size.Y / 2 : 0) +
+			(humanoid ? humanoid.HipHeight : 0);
+
+		const worldPosition = this.getWorldPosition(item.location.Position);
+
+		humanoid?.Destroy();
+
+		clone.PivotTo(new CFrame(worldPosition).mul(new CFrame(0, yOffset, 0)));
+
+		if (clone.PrimaryPart) {
+			clone.PrimaryPart.Anchored = true;
+		}
+		// 创建 PlacedEggComponent 实例并初始化
+
+		const placedPetComponent = this.components.addComponent<PlacedPetComponent>(clone);
+		placedPetComponent.initialize(this);
+		this.placedItemComponents.set(item.instanceId, placedPetComponent);
 	}
 
 	/** 清理孤立的蛋模型（没有对应状态的蛋）. */
