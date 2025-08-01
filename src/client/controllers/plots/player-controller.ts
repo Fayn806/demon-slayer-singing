@@ -6,7 +6,7 @@ import { LocalPlayer } from "client/constants";
 import type { RootStore } from "client/store";
 import { selectHeldItem } from "shared/store/players/selectors";
 import type { PlayerPlotState } from "shared/store/players/types";
-import { ItemType, type PlayerEgg, type PlayerPet } from "shared/types";
+import { ItemType, type PlayerBooster, type PlayerEgg, type PlayerPet } from "shared/types";
 
 import type { OnPlayerPlotLoaded } from "./plot-controller";
 
@@ -23,12 +23,25 @@ export class PlayerController implements OnStart, OnPlayerPlotLoaded {
 	public onPlayerPlotLoaded(playerId: string, plot: PlayerPlotState): void {
 		this.store.subscribe(selectHeldItem(playerId), heldItem => {
 			if (heldItem) {
-				if (heldItem.itemType === ItemType.Egg) {
-					this.handleHeldEgg(heldItem);
-				} else if (heldItem.itemType === ItemType.Pet) {
-					this.handleHeldPet(heldItem);
-				} else {
-					this.logger.Warn(`Unhandled held item type: ${heldItem.itemType}`);
+				switch (heldItem.itemType) {
+					case ItemType.Booster: {
+						this.handleHeldBooster(heldItem);
+
+						break;
+					}
+					case ItemType.Egg: {
+						this.handleHeldEgg(heldItem);
+
+						break;
+					}
+					case ItemType.Hammer: {
+						break;
+					}
+					case ItemType.Pet: {
+						this.handleHeldPet(heldItem);
+
+						break;
+					}
 				}
 			} else {
 				this.cleanupHeldItem();
@@ -57,6 +70,10 @@ export class PlayerController implements OnStart, OnPlayerPlotLoaded {
 
 	private handleHeldPet(heldItem: PlayerPet | undefined): void {
 		// 处理宠物逻辑
+	}
+
+	private handleHeldBooster(heldItem: PlayerBooster | undefined): void {
+		// 处理增益物品逻辑
 	}
 
 	private cleanupHeldItem(): void {}

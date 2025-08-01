@@ -5,6 +5,7 @@ import { CONVEYOR_CONSTANTS } from "shared/constants/game";
 import type {
 	ConveyorEgg,
 	MissedEgg,
+	PlayerBooster,
 	PlayerEgg,
 	PlayerInventoryItem,
 	PlayerPlacedItem,
@@ -66,6 +67,16 @@ function createInitialIslandState(): IslandState {
 				itemType: ItemType.Hammer,
 				uses: 0,
 			},
+			{
+				boosterId: "Boombox1",
+				instanceId: "11111",
+				itemType: ItemType.Booster,
+			} as PlayerBooster,
+			{
+				boosterId: "Boombox1",
+				instanceId: "22222",
+				itemType: ItemType.Booster,
+			} as PlayerBooster,
 		],
 		placed: [],
 	};
@@ -574,38 +585,6 @@ export const playersSlice = createProducer({} as PlayersState, {
 	 * @param placedItem - 放置的物品.
 	 * @returns 更新后的状态.
 	 */
-	placeItem: (state, playerId: string, placedItem: PlayerPlacedItem): PlayersState => {
-		const playerState = state[playerId];
-		if (!playerState) {
-			return state;
-		}
-
-		const currentIslandState = getCurrentIslandState(playerState);
-		const updatedIslandState = {
-			...currentIslandState,
-			placed: [...currentIslandState.placed, placedItem],
-		};
-
-		return {
-			...state,
-			[playerId]: {
-				...playerState,
-				islands: {
-					...playerState.islands,
-					[playerState.plot.islandId]: updatedIslandState,
-				},
-			},
-		};
-	},
-
-	/**
-	 * 从背包放置物品到当前岛屿.
-	 *
-	 * @param state - 当前状态.
-	 * @param playerId - 玩家ID.
-	 * @param placedItem - 放置的物品.
-	 * @returns 更新后的状态.
-	 */
 	placeItemFromInventory: (
 		state,
 		playerId: string,
@@ -783,6 +762,39 @@ export const playersSlice = createProducer({} as PlayersState, {
 	},
 
 	/**
+	 * 从当前岛屿移除放置的助推器.
+	 *
+	 * @param state - 当前状态.
+	 * @param playerId - 玩家ID.
+	 * @param boosterInstanceId - 助推器实例ID.
+	 * @returns 更新后的状态.
+	 */
+	removePlacedBooster: (state, playerId: string, boosterInstanceId: string): PlayersState => {
+		const playerState = state[playerId];
+		if (!playerState) {
+			return state;
+		}
+
+		const currentIslandState = getCurrentIslandState(playerState);
+
+		return {
+			...state,
+			[playerId]: {
+				...playerState,
+				islands: {
+					...playerState.islands,
+					[playerState.plot.islandId]: {
+						...currentIslandState,
+						placed: currentIslandState.placed.filter(
+							item => item.instanceId !== boosterInstanceId,
+						),
+					},
+				},
+			},
+		};
+	},
+
+	/**
 	 * 从当前岛屿移除放置的蛋.
 	 *
 	 * @param state - 当前状态.
@@ -818,56 +830,6 @@ export const playersSlice = createProducer({} as PlayersState, {
 			...currentIslandState,
 			placed: newPlacedItems,
 		};
-
-		return {
-			...state,
-			[playerId]: {
-				...playerState,
-				islands: {
-					...playerState.islands,
-					[playerState.plot.islandId]: updatedIslandState,
-				},
-			},
-		};
-	},
-
-	/**
-	 * 从当前岛屿移除放置的物品.
-	 *
-	 * @param state - 当前状态.
-	 * @param playerId - 玩家ID.
-	 * @param itemIndex - 物品索引.
-	 * @returns 更新后的状态.
-	 */
-	removePlacedItem: (state, playerId: string, itemIndex: number): PlayersState => {
-		const playerState = state[playerId];
-		if (!playerState) {
-			return state;
-		}
-
-		const currentIslandState = getCurrentIslandState(playerState);
-		const newPlacedItems = [...currentIslandState.placed];
-		const removedItem = newPlacedItems[itemIndex];
-
-		if (!removedItem) {
-			return state;
-		}
-
-		newPlacedItems.unorderedRemove(itemIndex);
-
-		let updatedIslandState = {
-			...currentIslandState,
-			placed: newPlacedItems,
-		};
-
-		// 检查是否是宠物类型，如果是则可以放回背包
-		if ((removedItem.itemType as ItemType) === ItemType.Pet) {
-			const petItem = removedItem as PlayerInventoryItem;
-			updatedIslandState = {
-				...updatedIslandState,
-				inventory: [...updatedIslandState.inventory, petItem],
-			};
-		}
 
 		return {
 			...state,

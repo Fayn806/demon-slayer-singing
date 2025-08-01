@@ -17,6 +17,7 @@ import { ConveyorSpeedMode, type SpeedHistoryEntry } from "shared/store/players/
 import {
 	type ConveyorEgg,
 	ItemType,
+	type PlacedBooster,
 	type PlacedEgg,
 	type PlacedPet,
 	type PlayerPlacedItem,
@@ -185,7 +186,9 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 	private initializePlacedItems(): void {
 		// 监听玩家已放置物品状态变化
 		this.janitor.Add(
-			this.store.subscribe(selectPlacedItems(this.attributes.playerId), placedItems => {
+			this.store.subscribe(selectPlacedItems(this.attributes.playerId), (state, prev) => {
+				return state.size() !== prev.size();
+			}, placedItems => {
 				this.updatePlacedItems(placedItems);
 			}),
 		);
@@ -218,10 +221,23 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 	 * @param item - 放置的物品数据.
 	 */
 	private createPlacedItem(item: PlayerPlacedItem): void {
-		if (item.itemType === ItemType.Egg) {
-			this.createPlacedEgg(item);
-		} else if (item.itemType === ItemType.Pet) {
-			this.createPlacedPet(item);
+		switch (item.itemType) {
+			case ItemType.Booster: {
+				this.createPlacedBooster(item);
+
+				break;
+			}
+			case ItemType.Egg: {
+				this.createPlacedEgg(item);
+
+				break;
+			}
+			case ItemType.Pet: {
+				this.createPlacedPet(item);
+
+				break;
+			}
+			// No default
 		}
 	}
 
@@ -281,6 +297,22 @@ export class PlotComponent extends BaseComponent<PlotAttributes, PlotFolder> imp
 		const placedPetComponent = this.components.addComponent<PlacedPetComponent>(clone);
 		placedPetComponent.initialize(this);
 		this.placedItemComponents.set(item.instanceId, placedPetComponent);
+	}
+
+	private createPlacedBooster(item: PlacedBooster): void {
+		const boosterModel = ReplicatedStorage.Assets.Boomboxes.FindFirstChild(item.boosterId);
+		if (!boosterModel) {
+			this.logger.Warn(`Booster model ${item.boosterId} not found`);
+			return;
+		}
+
+		const clone = boosterModel.Clone() as Model;
+		clone.SetAttribute("instanceId", item.instanceId);
+		clone.SetAttribute("playerId", this.attributes.playerId);
+		clone.Parent = this.instance.Items;
+
+		const worldPosition = this.getWorldPosition(item.location.Position);
+		clone.PivotTo(new CFrame(worldPosition));
 	}
 
 	/** 清理孤立的蛋模型（没有对应状态的蛋）. */

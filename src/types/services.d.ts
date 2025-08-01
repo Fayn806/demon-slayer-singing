@@ -1,5 +1,6 @@
 interface ReplicatedStorage {
 	"Assets": Folder & {
+		Boomboxes: Folder;
 		Characters: Folder;
 		Eggs: Folder & {
 			Egg1: Model;
@@ -12,8 +13,8 @@ interface ReplicatedStorage {
 			Egg8: Model;
 		};
 		Particles: Folder & {
-			"Collect": Part & {
-				"Attachment": Attachment;
+			Collect: Part & {
+				Attachment: Attachment;
 			};
 		};
 	};

@@ -43,13 +43,18 @@ interface BoomboxConfig {
 }
 
 /** 导出音箱配置字典 */
-declare const BoomboxConfig: {
-	readonly Boombox1: BoomboxConfig;
-	readonly Boombox2: BoomboxConfig;
-	readonly Boombox3: BoomboxConfig;
-	readonly Boombox4: BoomboxConfig;
-	readonly DiamondBoombox: BoomboxConfig;
-	readonly GoldenBoombox: BoomboxConfig;
-};
+interface BoomboxesConfig {
+	Boombox1: BoomboxConfig;
+	Boombox2: BoomboxConfig;
+	Boombox3: BoomboxConfig;
+	Boombox4: BoomboxConfig;
+	DiamondBoombox: BoomboxConfig;
+	GoldenBoombox: BoomboxConfig;
 
-export = BoomboxConfig;
+	/** 允许通过字符串索引访问 */
+	[boomboxId: string]: BoomboxConfig;
+}
+
+declare const BoomboxesConfig: BoomboxesConfig;
+
+export = BoomboxesConfig;

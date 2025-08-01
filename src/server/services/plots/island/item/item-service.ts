@@ -7,14 +7,20 @@ import type { PlayerService } from "server/services/player/player-service";
 import type { RootStore } from "server/store";
 import type { Configs } from "shared/configs";
 import { remotes } from "shared/remotes";
-import { selectInventoryItemById, selectPlayerState } from "shared/store/players/selectors";
+import {
+	selectInventoryItemById,
+	selectPlacedItems,
+	selectPlayerState,
+} from "shared/store/players/selectors";
 import { ItemType } from "shared/types";
 
+import type { OnPlayerPlotJoin } from "../../plot-service";
+import type { BoosterService } from "./booster/booster-service";
 import type { EggService } from "./egg-service";
 import type { PetService } from "./pet-service";
 
 @Service({})
-export class ItemService implements OnStart {
+export class ItemService implements OnStart, OnPlayerPlotJoin {
 	constructor(
 		private readonly logger: Logger,
 		private readonly store: RootStore,
@@ -22,6 +28,7 @@ export class ItemService implements OnStart {
 		private readonly configs: Configs,
 		private readonly petService: PetService,
 		private readonly eggService: EggService,
+		private readonly boosterService: BoosterService,
 	) {}
 
 	/** @ignore */
@@ -49,6 +56,29 @@ export class ItemService implements OnStart {
 				return this.petService.pickPet(playerEntity, itemInstanceId);
 			}),
 		);
+	}
+
+	public onPlayerPlotJoin(playerEntity: PlayerEntity): void {
+		const { janitor, userId } = playerEntity;
+
+		janitor.Add(
+			this.store.subscribe(
+				selectPlacedItems(userId),
+				(state, preState) => {
+					const count1 = state.filter(item => item.itemType === ItemType.Booster).size();
+					const count2 = preState
+						.filter(item => item.itemType === ItemType.Booster)
+						.size();
+					return count1 !== count2;
+				},
+				() => {
+					this.petService.savePetsEarnings(playerEntity);
+					this.boosterService.savePlacedEggsBonuses(playerEntity);
+				},
+			),
+		);
+
+		this.petService.savePetsEarnings(playerEntity);
 	}
 
 	/**
@@ -82,11 +112,19 @@ export class ItemService implements OnStart {
 		if (item.itemType === ItemType.Egg) {
 			// 默认值，实际使用时可能需要根据具体逻辑计算
 			this.eggService.placeEgg(playerEntity, item, location);
+			this.store.removeEggFromInventory(userId, itemInstanceId, 1);
 			return true;
 		}
 
 		if (item.itemType === ItemType.Pet) {
 			this.petService.placePet(playerEntity, item, location);
+			this.store.removeItemFromInventory(userId, itemInstanceId);
+			return true;
+		}
+
+		if (item.itemType === ItemType.Booster) {
+			this.boosterService.placeBooster(playerEntity, item, location);
+			this.store.removeItemFromInventory(userId, itemInstanceId);
 			return true;
 		}
 

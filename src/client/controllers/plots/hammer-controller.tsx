@@ -155,7 +155,12 @@ export class HammerController implements OnPlayerPlotLoaded {
 	 * @param target - 鼠标指向的目标.
 	 */
 	private handleTargetChanged(target?: MouseTarget): void {
-		if (!target || (target.item && target.item.itemType === ItemType.Egg)) {
+		if (
+			!target ||
+			(target.item &&
+				(target.item.itemType === ItemType.Egg ||
+					target.item.itemType === ItemType.Booster))
+		) {
 			this.clearHighlight();
 			return;
 		}

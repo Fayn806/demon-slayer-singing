@@ -6,8 +6,10 @@ import type { PlayerEntity } from "server/services/player/player-entity";
 import type { RootStore } from "server/store";
 import type { Configs } from "shared/configs";
 import { selectPlayerState } from "shared/store/players/selectors";
-import { ItemType, type PlacedEgg, type PlacedPet, type PlayerEgg } from "shared/types";
+import { ItemType, type PlacedEgg, type PlayerEgg } from "shared/types";
 import { generateUniqueId } from "shared/util/id-util";
+
+import type { PetService } from "./pet-service";
 
 @Service({})
 export class EggService {
@@ -15,6 +17,7 @@ export class EggService {
 		private readonly logger: Logger,
 		private readonly store: RootStore,
 		private readonly configs: Configs,
+		private readonly petService: PetService,
 	) {}
 
 	public placeEgg(playerEntity: PlayerEntity, playerEgg: PlayerEgg, location: CFrame): void {
@@ -22,6 +25,8 @@ export class EggService {
 		// 默认值，实际使用时可能需要根据具体逻辑计算
 		const currentTime = Workspace.GetServerTimeNow();
 		const placedItem = {
+			bonuses: [],
+			bonusUpdateTime: currentTime,
 			eggId: playerEgg.eggId,
 			hatchLeftTime: this.configs.EggsConfig[playerEgg.eggId].hatchTime,
 			instanceId: generateUniqueId("placedEgg"),
@@ -34,7 +39,6 @@ export class EggService {
 		} as PlacedEgg;
 
 		this.store.placeItemFromInventory(userId, placedItem);
-		this.store.removeEggFromInventory(userId, playerEgg.instanceId, 1);
 	}
 
 	/**
@@ -94,28 +98,10 @@ export class EggService {
 
 		// 删除placedEgg
 		this.store.removePlacedEgg(userId, eggInstanceId);
-		const currentTime = Workspace.GetServerTimeNow();
-		// 添加PlacedPet
-		const newPlacedPet: PlacedPet = {
-			currentEarning: 0,
-			earningsType: "coins",
-			earningTime: currentTime,
-			eggId: egg.eggId,
-			hatchTime: currentTime,
-			instanceId: generateUniqueId("pet"),
-			itemType: ItemType.Pet,
-			location: egg.location,
-			luckBonus: egg.luckBonus,
-			mutations: egg.mutations,
-			petId: "2",
-			placedTime: Workspace.GetServerTimeNow(),
-			sizeBonus: egg.sizeBonus,
-			totalEarnings: 0,
-		};
-		// 将新宠物放置到玩家的岛屿上
-		this.store.placeItem(userId, newPlacedPet);
 
-		this.logger.Info(`Egg ${eggInstanceId} hatched successfully.`);
+		// 创建新的PlacedPet
+		this.petService.hatchPetFromEgg(playerEntity, egg);
+
 		return true;
 	}
 }

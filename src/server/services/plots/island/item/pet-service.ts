@@ -1,5 +1,4 @@
-import { Service } from "@flamework/core";
-import { Janitor } from "@rbxts/janitor";
+import { type OnStart, Service } from "@flamework/core";
 import type { Logger } from "@rbxts/log";
 import { Workspace } from "@rbxts/services";
 
@@ -9,14 +8,12 @@ import type { RootStore } from "server/store";
 import type { Configs } from "shared/configs";
 import { remotes } from "shared/remotes";
 import { selectPlacedItems, selectPlayerState } from "shared/store/players/selectors";
-import { ItemType, type PlacedPet, type PlayerPet } from "shared/types";
+import { ItemType, type PlacedEgg, type PlacedPet, type PlayerPet } from "shared/types";
 import { calculateEarnings } from "shared/util/calculate-utils/earning";
 import { generateUniqueId } from "shared/util/id-util";
 
 @Service({})
-export class PetService {
-	private readonly playerJanitors = new Map<string, Janitor>();
-
+export class PetService implements OnStart {
 	constructor(
 		private readonly logger: Logger,
 		private readonly store: RootStore,
@@ -33,30 +30,6 @@ export class PetService {
 		);
 	}
 
-	public onPlayerPlotJoin(playerEntity: PlayerEntity): void {
-		const { userId } = playerEntity;
-		const janitor = new Janitor();
-		janitor.Add(
-			this.store.subscribe(
-				selectPlacedItems(userId),
-				(state, preState) => {
-					const count1 = state.filter(item => item.itemType === ItemType.Booster).size();
-					const count2 = preState
-						.filter(item => item.itemType === ItemType.Booster)
-						.size();
-					return count1 !== count2;
-				},
-				() => {
-					this.logger.Info(`Calculating earnings for player ${userId}.`);
-					this.savePetsEarnings(playerEntity);
-				},
-			),
-		);
-		this.savePetsEarnings(playerEntity);
-
-		this.playerJanitors.set(userId, janitor);
-	}
-
 	public placePet(playerEntity: PlayerEntity, playerPet: PlayerPet, location: CFrame): void {
 		const { userId } = playerEntity;
 		// 默认值，实际使用时可能需要根据具体逻辑计算
@@ -70,16 +43,30 @@ export class PetService {
 			instanceId: generateUniqueId("placedPet"),
 			itemType: ItemType.Pet,
 			location,
-			luckBonus: playerPet.luckBonus,
 			mutations: playerPet.mutations,
 			petId: playerPet.petId,
 			placedTime: currentTime,
-			sizeBonus: playerPet.sizeBonus,
 			totalEarnings: playerPet.totalEarnings,
 		} as PlacedPet;
 
 		this.store.placeItemFromInventory(userId, placedItem);
-		this.store.removeItemFromInventory(userId, playerPet.instanceId);
+	}
+
+	public hatchPetFromEgg(playerEntity: PlayerEntity, placedEgg: PlacedEgg): void {
+		const currentTime = Workspace.GetServerTimeNow();
+
+		const newPlayerPet: PlayerPet = {
+			bonuses: placedEgg.bonuses,
+			eggId: placedEgg.eggId,
+			hatchTime: currentTime,
+			instanceId: generateUniqueId("pet"),
+			itemType: ItemType.Pet,
+			mutations: placedEgg.mutations,
+			petId: "3",
+			totalEarnings: 0,
+		};
+
+		this.placePet(playerEntity, newPlayerPet, placedEgg.location);
 	}
 
 	/**
@@ -117,7 +104,7 @@ export class PetService {
 		return true;
 	}
 
-	private savePetsEarnings(playerEntity: PlayerEntity): void {
+	public savePetsEarnings(playerEntity: PlayerEntity): void {
 		const { userId } = playerEntity;
 		const playerPets = this.store.getState(selectPlacedItems(userId));
 

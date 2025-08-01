@@ -109,21 +109,39 @@ export interface PlayerEgg extends BaseEgg {
 	itemType: ItemType.Egg;
 }
 
+export enum BonusType {
+	Luck = "luck",
+	Size = "size",
+	"Size Luck" = "size luck",
+	"Luck Size" = "luck size"
+}
+
+export interface Bonus {
+	/** 来源. */
+	fromInstanceId: string;
+	/** 加成类型. */
+	type: BonusType;
+	/** 加成值. */
+	value: number;
+}
+
 export interface PlacedEgg extends BaseEgg, PlacedData {
+	/** 加成. */
+	bonuses: Array<Bonus>;
+	/** 加成更新时间. */
+	bonusUpdateTime: number;
 	/** 孵化剩余时间（秒）. */
 	hatchLeftTime: number;
 	/** 实例ID. */
 	instanceId: string;
 	/** 物品类型. */
 	itemType: ItemType.Egg;
-	/** 幸运加成. */
-	luckBonus: number;
-	/** 大小加成. */
-	sizeBonus: number;
 }
 
 /** 玩家的蛋孵化后宠物实例. */
 export interface PlayerPet {
+	/** 加成. */
+	bonuses: Array<Bonus>;
 	/** 蛋的唯一标识符. */
 	eggId: EggId;
 	/** 孵化时间. */
@@ -132,14 +150,10 @@ export interface PlayerPet {
 	instanceId: string;
 	/** 物品类型. */
 	itemType: ItemType.Pet;
-	/** 幸运加成. */
-	luckBonus?: number;
 	/** 变异类型. */
 	mutations: Array<EggMutation>;
 	/** 宠物ID. */
 	petId: string;
-	/** 大小加成. */
-	sizeBonus?: number;
 	/** 总收益. */
 	totalEarnings: number;
 }
@@ -176,8 +190,6 @@ export interface PlayerBooster {
 export interface PlacedBooster extends PlacedData, PlayerBooster {
 	/** 物品类型. */
 	itemType: ItemType.Booster;
-	/** 当前加成剩余时间（秒）. */
-	remainingTime: number;
 }
 
 export interface PlayerHammer {

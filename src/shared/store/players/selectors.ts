@@ -1,7 +1,15 @@
 import { createSelector } from "@rbxts/reflex";
 
-import type { ConveyorEgg, MissedEgg, PlayerInventoryItem, PlayerPlacedItem } from "shared/types";
-import { ItemType } from "shared/types";
+import { configs } from "shared/configs";
+import type {
+	ConveyorEgg,
+	MissedEgg,
+	PlacedBooster,
+	PlacedEgg,
+	PlayerInventoryItem,
+	PlayerPlacedItem,
+} from "shared/types";
+import { BonusType, ItemType } from "shared/types";
 
 import type { SharedState } from "..";
 import type {
@@ -404,6 +412,91 @@ export function selectPlacedItems(
 		selectCurrentIslandState(playerId),
 		(islandState): Array<PlayerPlacedItem> => islandState?.placed ?? [],
 	);
+}
+
+/**
+ * 选择增益器范围内的放置蛋.
+ *
+ * @param playerId - 玩家ID.
+ * @param boosterInstanceId - 增益器实例ID.
+ * @param location
+ * @param radius - 作用半径.
+ * @returns 范围内放置蛋选择器函数.
+ */
+export function selectPlacedEggsInRange(
+	playerId: string,
+	location: CFrame,
+	radius: number,
+): (state: SharedState) => Array<PlacedEgg> {
+	return createSelector(selectPlacedItems(playerId), (placedItems): Array<PlayerPlacedItem> => {
+		const boosterPosition = location.Position;
+		return placedItems.filter(item => {
+			if (item.itemType === ItemType.Egg) {
+				const itemPosition = item.location.Position;
+				return itemPosition.sub(boosterPosition).Magnitude <= radius;
+			}
+
+			return false;
+		});
+	}) as (state: SharedState) => Array<PlacedEgg>;
+}
+
+export function selectPlacedEggBoosters(
+	playerId: string,
+	eggInstanceId: string,
+): (state: SharedState) => Array<PlacedBooster> {
+	return createSelector(
+		selectPlacedItems(playerId), 
+		selectPlacedItemById(playerId, eggInstanceId), 
+		(placedItems: Array<PlayerPlacedItem>, egg: PlayerPlacedItem | undefined): Array<PlacedBooster> => {
+			if (!egg) {
+				return [];
+			}
+
+			// 只返回放置的增益器
+			const boosters = placedItems.filter(item => item.itemType === ItemType.Booster);
+			if (boosters.size() === 0) {
+				return [];
+			}
+
+			// 只返回范围内的增益器
+			const validBoosters = boosters.filter(item => {
+				const boosterConfig = configs.BoomboxesConfig[(item as PlacedBooster).boosterId];
+				if (!boosterConfig) {
+					return false;
+				}
+
+				const { radius } = boosterConfig;
+				const eggPosition = egg.location.Position;
+				const boosterPosition = (item as PlacedBooster).location.Position;
+
+				return eggPosition.sub(boosterPosition).Magnitude <= radius;
+			}) as Array<PlacedBooster>;
+
+			// 对结果进行排序以确保一致性，便于比较
+			validBoosters.sort((a, b) => a.instanceId < b.instanceId);
+			
+			return validBoosters;
+		}
+	) as (state: SharedState) => Array<PlacedBooster>;
+}
+
+export function selectPlacedEggSizeBonus(
+	playerId: string,
+): (state: SharedState) => number | undefined {
+	return createSelector(selectPlacedItems(playerId), (placedItems): number | undefined => {
+		const egg = placedItems.find(item => item.itemType === ItemType.Egg);
+		if (!egg) {
+			return undefined;
+		}
+
+		const sizeBonus = egg.bonuses.find(bonus => bonus.type === BonusType.Size);
+		if (!sizeBonus) {
+			return undefined;
+		}
+
+		return sizeBonus.value;
+	});
 }
 
 /**

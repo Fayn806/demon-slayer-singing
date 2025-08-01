@@ -76,18 +76,14 @@ export class PlacedEggComponent extends BaseComponent<PlacedEggAttributes, Place
 			return;
 		}
 
-		const { hatchLeftTime, mutations, placedTime } = placedEgg;
+		const { hatchLeftTime, placedTime } = placedEgg;
 		const currentTime = Workspace.GetServerTimeNow();
 		const leftTime = placedTime + hatchLeftTime - currentTime;
 
 		this.guiRoot.render(
 			createPortal(
 				<RemProvider key="rem-provider">
-					<HatchingGui
-						eggMutations={mutations}
-						leftTime={placedTime + hatchLeftTime - currentTime}
-						maxTime={hatchLeftTime}
-					/>
+					<HatchingGui instanceId={this.attributes.instanceId} />
 				</RemProvider>,
 				this.instance,
 			),
@@ -98,13 +94,11 @@ export class PlacedEggComponent extends BaseComponent<PlacedEggAttributes, Place
 		this.hatchingPromise
 			.andThen(() => {
 				this.logger.Info(`Egg ${this.attributes.instanceId} has hatched.`);
-				this.guiRoot.unmount();
 				// 这里可以添加孵化完成后的逻辑，比如更新状态或通知玩家
 				this.createHatchInteraction();
 			})
 			.catch(err => {
 				this.logger.Error(`Error while hatching egg ${this.attributes.instanceId}: ${err}`);
-				this.guiRoot.unmount();
 			});
 	}
 
